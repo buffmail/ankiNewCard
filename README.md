@@ -49,4 +49,19 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
+### Vercel 환경 변수 설정
+
+**중요**: Vercel에 배포할 때는 환경 변수를 반드시 설정해야 합니다.
+
+1. Vercel 대시보드에서 프로젝트를 선택합니다.
+2. **Settings** → **Environment Variables**로 이동합니다.
+3. 다음 환경 변수를 추가합니다:
+   - **Name**: `GEMINI_API_KEY`
+   - **Value**: 발급받은 Gemini API 키
+   - **Environment**: Production, Preview, Development 모두 선택
+4. **Save** 버튼을 클릭합니다.
+5. 새로운 배포를 트리거하거나 기존 배포를 다시 배포합니다.
+
+**주의**: 환경 변수를 설정한 후에는 반드시 재배포해야 환경 변수가 적용됩니다.
+
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
