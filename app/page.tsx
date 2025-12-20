@@ -138,7 +138,7 @@ export default function Home() {
       result.meanings.forEach((item, idx) => {
         backParts.push(item.meaning);
         if (item.example) {
-          backParts.push(item.example);
+          backParts.push(` - ${item.example}`);
         }
         // 마지막이 아니면 빈 줄 추가
         if (idx < result.meanings.length - 1) {
