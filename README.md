@@ -18,6 +18,28 @@ GEMINI_API_KEY=your_gemini_api_key_here
 
 ### 개발 서버 실행
 
+**로컬에서만 접속 (기본):**
+```bash
+yarn dev
+```
+
+**모바일 기기에서도 접속 (같은 WiFi 네트워크 필요):**
+```bash
+yarn dev:network
+```
+
+모바일 접속 시:
+1. 컴퓨터의 로컬 IP 주소 확인:
+   - macOS: 터미널에서 `ifconfig | grep "inet " | grep -v 127.0.0.1` 또는 `ipconfig getifaddr en0`
+   - Windows: `ipconfig` 명령어로 IPv4 주소 확인
+   - 예: `192.168.1.10`
+
+2. 모바일 브라우저에서 접속:
+   - `http://<컴퓨터의_IP_주소>:3000`
+   - 예: `http://192.168.1.10:3000`
+
+**참고**: 컴퓨터와 모바일이 같은 WiFi 네트워크에 연결되어 있어야 합니다.
+
 First, run the development server:
 
 ```bash
