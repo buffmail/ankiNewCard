@@ -126,24 +126,18 @@ export default function Home() {
     const cardData = `${word}\t${back}`;
     
     // AnkiDroid Intent URI 생성
-    // AnkiDroid는 SEND intent를 통해 텍스트를 받아서 카드로 추가할 수 있음
-    const intentUri = `intent://send/#Intent;scheme=android.intent;action=android.intent.action.SEND;type=text/plain;S.android.intent.extra.TEXT=${encodeURIComponent(cardData)};package=com.ichi2.anki;end`;
+    // AnkiDroid는 android.intent.action.SEND를 통해 텍스트를 받음
+    const encodedText = encodeURIComponent(cardData);
     
-    // Intent 호출 시도
-    try {
-      // Android Intent URI를 사용하여 AnkiDroid 앱 열기
+    // Intent URI 형식 (scheme 없이 직접 action 지정)
+    const intentUri = `intent://#Intent;action=android.intent.action.SEND;type=text/plain;S.android.intent.extra.TEXT=${encodedText};package=com.ichi2.anki;end`;
+    
+    // Android에서는 window.location.href로 Intent 호출
+    // iOS나 다른 플랫폼에서는 작동하지 않을 수 있음
+    if (/Android/i.test(navigator.userAgent)) {
       window.location.href = intentUri;
-      
-      // Intent가 작동하지 않을 경우를 대비한 fallback (일부 브라우저에서 지원 안 될 수 있음)
-      setTimeout(() => {
-        // 사용자에게 안내
-        if (confirm('AnkiDroid가 열리지 않았나요? Play 스토어에서 AnkiDroid를 설치하시겠습니까?')) {
-          window.open('https://play.google.com/store/apps/details?id=com.ichi2.anki', '_blank');
-        }
-      }, 1000);
-    } catch (error) {
-      console.error('Failed to open AnkiDroid:', error);
-      alert('AnkiDroid를 열 수 없습니다. AnkiDroid 앱이 설치되어 있는지 확인해주세요.');
+    } else {
+      alert('이 기능은 Android 기기에서만 작동합니다.');
     }
   };
 
