@@ -104,6 +104,12 @@ export default function Home() {
 
   // AnkiDroid Intent 호출 함수
   const addToAnkiDroid = (word: string, result: WordResult) => {
+    // Android 기기 확인
+    if (!/Android/i.test(navigator.userAgent)) {
+      alert('이 기능은 Android 기기에서만 작동합니다.');
+      return;
+    }
+    
     // Back 필드 포맷팅 (뜻과 예문)
     const backParts: string[] = [];
     
@@ -122,44 +128,25 @@ export default function Home() {
     
     const back = backParts.join('\n');
     
-    // Front와 Back을 탭으로 구분 (AnkiDroid는 탭으로 구분된 텍스트를 카드로 인식)
-    const cardData = `${word}\t${back}`;
+    // AnkiDroid Intent URI 생성 - addnote scheme 사용
+    // 형식: intent://addnote?deck=DeckName&model=ModelName&fields=Field1|Field2&tags=Tag1 Tag2#Intent;scheme=ankidroid;package=com.ichi2.anki;end
+    // fields는 모델의 필드 순서에 맞게 '|'로 구분
+    // Basic 모델의 경우: Front|Back
     
-    // Android 기기 확인
-    if (!/Android/i.test(navigator.userAgent)) {
-      alert('이 기능은 Android 기기에서만 작동합니다.');
-      return;
-    }
+    const fields = `${encodeURIComponent(word)}|${encodeURIComponent(back)}`;
+    const deck = encodeURIComponent('daily'); // 덱 이름: daily
+    const model = encodeURIComponent('Basic'); // Basic 모델 사용
     
-    // AnkiDroid Intent URI 생성
-    // Front와 Back을 탭으로 구분한 형식 (AnkiDroid가 인식하는 형식)
-    const encodedText = encodeURIComponent(cardData);
+    // Intent URI 생성
+    const intentUri = `intent://addnote?deck=${deck}&model=${model}&fields=${fields}#Intent;scheme=ankidroid;package=com.ichi2.anki;end`;
     
-    // Intent URI - ankidroid scheme 사용 (fallback URL 없음)
-    // 형식: intent://[path]#Intent;scheme=[scheme];action=[action];[extras];package=[package];end
-    const intentUri = `intent://send/#Intent;scheme=ankidroid;action=android.intent.action.SEND;type=text/plain;S.android.intent.extra.TEXT=${encodedText};package=com.ichi2.anki;end`;
-    
-    // Intent 호출 시도
-    // iframe을 사용하여 새 탭/Play Store로 이동하는 것을 방지
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '9999px';
-    iframe.style.visibility = 'hidden';
-    iframe.src = intentUri;
-    
-    document.body.appendChild(iframe);
-    
-    // 즉시 제거 (Intent는 이미 실행됨)
-    setTimeout(() => {
-      if (iframe.parentNode) {
-        document.body.removeChild(iframe);
-      }
-    }, 1000);
-    
-    // iframe이 작동하지 않는 경우를 대비한 fallback
-    setTimeout(() => {
+    // Intent 호출
+    try {
       window.location.href = intentUri;
-    }, 100);
+    } catch (error) {
+      console.error('Failed to open AnkiDroid:', error);
+      alert('AnkiDroid를 열 수 없습니다.');
+    }
   };
 
   // 단어가 1개일 때 자동으로 뜻 가져오기 (입력이 끝난 후 500ms 후)
