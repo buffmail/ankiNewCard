@@ -103,8 +103,8 @@ export default function Home() {
     }
   }, [loadingWords, wordResults]);
 
-  // AnkiDroid API URL 생성 함수
-  const addToAnkiDroid = (word: string, result: WordResult) => {
+  // Share 기능 - AnkiDroid로 공유
+  const shareToAnkiDroid = async (word: string, result: WordResult) => {
     // Back 필드 포맷팅 (뜻과 예문)
     const backParts: string[] = [];
     
@@ -123,21 +123,31 @@ export default function Home() {
     
     const back = backParts.join('\n');
     
-    // AnkiDroid API URL 생성
-    // 형식: anki://x-callback-url/addnote?profile=User&type=Basic&deck=Default&fldFront=...&fldBack=...
-    const baseUrl = "anki://x-callback-url/addnote";
-    const params = new URLSearchParams();
-
-    params.append("type", "Basic");        // 노트 유형
-    params.append("deck", "daily");        // 덱 이름
-    params.append("fldFront", word);       // 앞면 필드 (Front)
-    params.append("fldBack", back);        // 뒷면 필드 (Back)
-
-    const finalUrl = baseUrl + "?" + params.toString();
-
-    // 호출
-    console.log("Calling: " + finalUrl);
-    window.location.href = finalUrl;
+    // Front와 Back을 탭으로 구분 (AnkiDroid가 탭으로 구분된 텍스트를 Front/Back으로 인식)
+    const shareText = `${word}\t${back}`;
+    
+    // Web Share API 사용
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          text: shareText,
+        });
+      } catch (error) {
+        // 사용자가 공유를 취소한 경우는 에러로 처리하지 않음
+        if ((error as Error).name !== 'AbortError') {
+          console.error('Share failed:', error);
+        }
+      }
+    } else {
+      // Web Share API를 지원하지 않는 경우 클립보드에 복사
+      try {
+        await navigator.clipboard.writeText(shareText);
+        alert('클립보드에 복사되었습니다. AnkiDroid 앱에서 붙여넣으세요.');
+      } catch (error) {
+        console.error('Clipboard copy failed:', error);
+        alert('공유 기능을 사용할 수 없습니다.');
+      }
+    }
   };
 
   // 단어가 1개일 때 자동으로 뜻 가져오기 (입력이 끝난 후 500ms 후)
@@ -230,7 +240,7 @@ export default function Home() {
                                   </div>
                                 ))}
                                 <button
-                                  onClick={() => addToAnkiDroid(word, result)}
+                                  onClick={() => shareToAnkiDroid(word, result)}
                                   className="w-full mt-3 px-4 py-2 bg-blue-500 hover:bg-blue-600 
                                            text-white rounded-md text-sm font-medium transition-colors"
                                 >
