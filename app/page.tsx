@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { BUILD_TIME } from "./build-time";
 
 interface WordResult {
   word: string;
@@ -128,17 +129,14 @@ export default function Home() {
     
     const back = backParts.join('\n');
     
-    // AnkiDroid Intent URI 생성 - addnote scheme 사용
-    // 형식: intent://addnote?deck=DeckName&model=ModelName&fields=Field1|Field2&tags=Tag1 Tag2#Intent;scheme=ankidroid;package=com.ichi2.anki;end
-    // fields는 모델의 필드 순서에 맞게 '|'로 구분
-    // Basic 모델의 경우: Front|Back
-    
-    const fields = `${encodeURIComponent(word)}|${encodeURIComponent(back)}`;
-    const deck = encodeURIComponent('daily'); // 덱 이름: daily
-    const model = encodeURIComponent('Basic'); // Basic 모델 사용
+    // AnkiDroid Intent URI 생성
+    // Gemini가 제안한 형식: intent:#Intent;action=android.intent.action.SEND;type=text/plain;S.android.intent.extra.TEXT=앞면:...\n뒷면:...;package=com.ichi2.anki;end
+    // 텍스트 형식: "앞면:Front\n뒷면:Back" (AnkiDroid가 인식하는 형식)
+    const cardText = `앞면:${word}\n뒷면:${back}`;
+    const encodedText = encodeURIComponent(cardText);
     
     // Intent URI 생성
-    const intentUri = `intent://addnote?deck=${deck}&model=${model}&fields=${fields}#Intent;scheme=ankidroid;package=com.ichi2.anki;end`;
+    const intentUri = `intent:#Intent;action=android.intent.action.SEND;type=text/plain;S.android.intent.extra.TEXT=${encodedText};package=com.ichi2.anki;end`;
     
     // Intent 호출
     try {
@@ -263,6 +261,13 @@ export default function Home() {
               텍스트를 붙여넣으면 영어 단어가 자동으로 추출됩니다.
             </div>
           )}
+
+          {/* 빌드 시간 표시 */}
+          <div className="mt-8 text-center">
+            <p className="text-xs text-gray-400 dark:text-gray-600">
+              Build: {BUILD_TIME} KST
+            </p>
+          </div>
         </div>
       </main>
     </div>
