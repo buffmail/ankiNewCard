@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Vercel에서 rate limit 방지를 위해 dynamic 설정
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 // 테스트용 GET 핸들러
 export async function GET() {
   return NextResponse.json({ message: 'API route is working' });
@@ -44,6 +48,8 @@ export async function POST(request: NextRequest) {
           }]
         }]
       }),
+      // Vercel에서 rate limit 문제를 방지하기 위한 설정
+      cache: 'no-store',
     });
 
     if (!response.ok) {
@@ -54,6 +60,15 @@ export async function POST(request: NextRequest) {
         url: apiUrl.replace(apiKey, 'HIDDEN_KEY'),
         errorData
       });
+      
+      // 429 에러인 경우 특별한 메시지 제공
+      if (response.status === 429) {
+        return NextResponse.json(
+          { error: 'API 호출 제한에 도달했습니다. 잠시 후 다시 시도해주세요.' },
+          { status: 429 }
+        );
+      }
+      
       return NextResponse.json(
         { error: `Gemini API 호출에 실패했습니다. (${response.status}: ${response.statusText})` },
         { status: response.status }

@@ -79,7 +79,8 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        throw new Error('API 호출 실패');
+        const errorData = await response.json().catch(() => ({ error: 'API 호출 실패' }));
+        throw new Error(errorData.error || 'API 호출 실패');
       }
 
       const result: WordResult = await response.json();
@@ -88,10 +89,12 @@ export default function Home() {
       setWordResults(prev => new Map(prev).set(word, result));
     } catch (error) {
       console.error('Error fetching word meaning:', error);
+      // 에러 메시지 추출
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch definition.';
       // 에러 발생 시에도 결과 저장 (에러 메시지 표시용)
       setWordResults(prev => new Map(prev).set(word, {
         word,
-        meanings: [{ meaning: 'Failed to fetch definition.', example: '' }]
+        meanings: [{ meaning: errorMessage, example: '' }]
       }));
     } finally {
       // 로딩 상태 제거
