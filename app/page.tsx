@@ -138,15 +138,11 @@ export default function Home() {
                    `action=org.openintents.action.CREATE_FLASHCARD;` +
                    `S.SOURCE_TEXT=${encFront};` +
                    `S.TARGET_TEXT=${encBack};` +
+                   `package=com.ichi2.anki;` +
                    `end`;
     
-    // Intent 호출
-    try {
-      window.location.href = intent;
-    } catch (error) {
-      console.error('Failed to open AnkiDroid:', error);
-      alert('AnkiDroid를 열 수 없습니다.');
-    }
+    // 실행
+    window.location.href = intent;
   };
 
   // 단어가 1개일 때 자동으로 뜻 가져오기 (입력이 끝난 후 500ms 후)
