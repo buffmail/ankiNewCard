@@ -103,14 +103,8 @@ export default function Home() {
     }
   }, [loadingWords, wordResults]);
 
-  // AnkiDroid Intent 호출 함수
+  // AnkiDroid API URL 생성 함수
   const addToAnkiDroid = (word: string, result: WordResult) => {
-    // Android 기기 확인
-    if (!/Android/i.test(navigator.userAgent)) {
-      alert('이 기능은 Android 기기에서만 작동합니다.');
-      return;
-    }
-    
     // Back 필드 포맷팅 (뜻과 예문)
     const backParts: string[] = [];
     
@@ -129,20 +123,21 @@ export default function Home() {
     
     const back = backParts.join('\n');
     
-    // AnkiDroid Intent URI 생성
-    // org.openintents.action.CREATE_FLASHCARD action 사용
-    const encFront = encodeURIComponent(word);
-    const encBack = encodeURIComponent(back);
-    
-    const intent = `intent:#Intent;` +
-                   `action=org.openintents.action.CREATE_FLASHCARD;` +
-                   `S.SOURCE_TEXT=${encFront};` +
-                   `S.TARGET_TEXT=${encBack};` +
-                   `package=com.ichi2.anki;` +
-                   `end`;
-    
-    // 실행
-    window.location.href = intent;
+    // AnkiDroid API URL 생성
+    // 형식: anki://x-callback-url/addnote?profile=User&type=Basic&deck=Default&fldFront=...&fldBack=...
+    const baseUrl = "anki://x-callback-url/addnote";
+    const params = new URLSearchParams();
+
+    params.append("type", "Basic");        // 노트 유형
+    params.append("deck", "daily");        // 덱 이름
+    params.append("fldFront", word);       // 앞면 필드 (Front)
+    params.append("fldBack", back);        // 뒷면 필드 (Back)
+
+    const finalUrl = baseUrl + "?" + params.toString();
+
+    // 호출
+    console.log("Calling: " + finalUrl);
+    window.location.href = finalUrl;
   };
 
   // 단어가 1개일 때 자동으로 뜻 가져오기 (입력이 끝난 후 500ms 후)
@@ -239,7 +234,7 @@ export default function Home() {
                                   className="w-full mt-3 px-4 py-2 bg-blue-500 hover:bg-blue-600 
                                            text-white rounded-md text-sm font-medium transition-colors"
                                 >
-                                  Add to Anki
+                                  Share
                                 </button>
                               </div>
                             )}
