@@ -182,6 +182,17 @@ export default function Home() {
     }
   };
 
+  // 클립보드에서 텍스트 가져오기
+  const pasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setInputText(text);
+    } catch (error) {
+      console.error('Clipboard read failed:', error);
+      alert('클립보드 읽기 권한이 필요합니다.');
+    }
+  };
+
   // 단어가 1개일 때 자동으로 뜻 가져오기 (입력이 끝난 후 500ms 후)
   useEffect(() => {
     if (extractedWords.length === 1) {
@@ -268,12 +279,23 @@ export default function Home() {
 
           {/* 입력 영역 */}
           <div className="mb-6">
-            <label 
-              htmlFor="word-input" 
-              className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300"
-            >
-              텍스트 붙여넣기
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label 
+                htmlFor="word-input" 
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
+                텍스트 붙여넣기
+              </label>
+              <button
+                onClick={pasteFromClipboard}
+                className="px-3 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600
+                         text-gray-700 dark:text-gray-300 rounded-md border border-gray-300 dark:border-gray-600
+                         transition-colors"
+                title="클립보드에서 붙여넣기"
+              >
+                📋 클립보드
+              </button>
+            </div>
             <textarea
               id="word-input"
               value={inputText}
