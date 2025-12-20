@@ -130,17 +130,19 @@ export default function Home() {
     const back = backParts.join('\n');
     
     // AnkiDroid Intent URI 생성
-    // Gemini가 제안한 형식: intent:#Intent;action=android.intent.action.SEND;type=text/plain;S.android.intent.extra.TEXT=앞면:...\n뒷면:...;package=com.ichi2.anki;end
-    // 텍스트 형식: "앞면:Front\n뒷면:Back" (AnkiDroid가 인식하는 형식)
-    const cardText = `앞면:${word}\n뒷면:${back}`;
-    const encodedText = encodeURIComponent(cardText);
+    // org.openintents.action.CREATE_FLASHCARD action 사용
+    const encFront = encodeURIComponent(word);
+    const encBack = encodeURIComponent(back);
     
-    // Intent URI 생성
-    const intentUri = `intent:#Intent;action=android.intent.action.SEND;type=text/plain;S.android.intent.extra.TEXT=${encodedText};package=com.ichi2.anki;end`;
+    const intent = `intent:#Intent;` +
+                   `action=org.openintents.action.CREATE_FLASHCARD;` +
+                   `S.SOURCE_TEXT=${encFront};` +
+                   `S.TARGET_TEXT=${encBack};` +
+                   `end`;
     
     // Intent 호출
     try {
-      window.location.href = intentUri;
+      window.location.href = intent;
     } catch (error) {
       console.error('Failed to open AnkiDroid:', error);
       alert('AnkiDroid를 열 수 없습니다.');
