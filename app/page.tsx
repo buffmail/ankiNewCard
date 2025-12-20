@@ -106,9 +106,8 @@ export default function Home() {
         const errorData = await response.json().catch(() => ({ error: 'API 호출 실패' }));
         throw new Error(errorData.error || 'API 호출 실패');
       }
-
       const result: WordResult = await response.json();
-      
+
       // 결과 저장
       setWordResults(prev => new Map(prev).set(word, result));
     } catch (error) {
@@ -150,25 +149,31 @@ export default function Home() {
     
     const back = backParts.join('\n');
     
-    // Front와 Back을 탭으로 구분 (AnkiDroid가 탭으로 구분된 텍스트를 Front/Back으로 인식)
-    const shareText = `${word}\t${back}`;
     
     // Web Share API 사용
     if (navigator.share) {
       try {
         await navigator.share({
-          text: shareText,
+          text: back,
+          title: word,
         });
       } catch (error) {
         // 사용자가 공유를 취소한 경우는 에러로 처리하지 않음
         if ((error as Error).name !== 'AbortError') {
           console.error('Share failed:', error);
+          // 공유 실패시 클립보드로 폴백
+          try {
+            await navigator.clipboard.writeText(`${word}\t${back}`);
+            alert('공유 실패. 클립보드에 복사되었습니다.\nAnkiDroid 앱에서 붙여넣으세요.');
+          } catch (clipError) {
+            console.error('Clipboard fallback failed:', clipError);
+          }
         }
       }
     } else {
       // Web Share API를 지원하지 않는 경우 클립보드에 복사
       try {
-        await navigator.clipboard.writeText(shareText);
+        await navigator.clipboard.writeText(`${word}\t${back}`);
         alert('클립보드에 복사되었습니다. AnkiDroid 앱에서 붙여넣으세요.');
       } catch (error) {
         console.error('Clipboard copy failed:', error);
