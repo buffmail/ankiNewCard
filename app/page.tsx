@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface WordResult {
   word: string;
@@ -59,7 +59,7 @@ export default function Home() {
   }, [inputText]);
 
   // Gemini API 호출 함수
-  const fetchWordMeaning = async (word: string) => {
+  const fetchWordMeaning = useCallback(async (word: string) => {
     // 이미 로딩 중이거나 결과가 있으면 스킵
     if (loadingWords.has(word) || wordResults.has(word)) {
       return;
@@ -100,7 +100,69 @@ export default function Home() {
         return next;
       });
     }
+  }, [loadingWords, wordResults]);
+
+  // AnkiDroid Intent 호출 함수
+  const addToAnkiDroid = (word: string, result: WordResult) => {
+    // Back 필드 포맷팅 (뜻과 예문)
+    const backParts: string[] = [];
+    
+    if (result.meanings && result.meanings.length > 0) {
+      result.meanings.forEach((item, idx) => {
+        backParts.push(item.meaning);
+        if (item.example) {
+          backParts.push(item.example);
+        }
+        // 마지막이 아니면 빈 줄 추가
+        if (idx < result.meanings.length - 1) {
+          backParts.push('');
+        }
+      });
+    }
+    
+    const back = backParts.join('\n');
+    
+    // Front와 Back을 탭으로 구분 (AnkiDroid는 탭으로 구분된 텍스트를 카드로 인식)
+    const cardData = `${word}\t${back}`;
+    
+    // AnkiDroid Intent URI 생성
+    // AnkiDroid는 SEND intent를 통해 텍스트를 받아서 카드로 추가할 수 있음
+    const intentUri = `intent://send/#Intent;scheme=android.intent;action=android.intent.action.SEND;type=text/plain;S.android.intent.extra.TEXT=${encodeURIComponent(cardData)};package=com.ichi2.anki;end`;
+    
+    // Intent 호출 시도
+    try {
+      // Android Intent URI를 사용하여 AnkiDroid 앱 열기
+      window.location.href = intentUri;
+      
+      // Intent가 작동하지 않을 경우를 대비한 fallback (일부 브라우저에서 지원 안 될 수 있음)
+      setTimeout(() => {
+        // 사용자에게 안내
+        if (confirm('AnkiDroid가 열리지 않았나요? Play 스토어에서 AnkiDroid를 설치하시겠습니까?')) {
+          window.open('https://play.google.com/store/apps/details?id=com.ichi2.anki', '_blank');
+        }
+      }, 1000);
+    } catch (error) {
+      console.error('Failed to open AnkiDroid:', error);
+      alert('AnkiDroid를 열 수 없습니다. AnkiDroid 앱이 설치되어 있는지 확인해주세요.');
+    }
   };
+
+  // 단어가 1개일 때 자동으로 뜻 가져오기 (입력이 끝난 후 500ms 후)
+  useEffect(() => {
+    if (extractedWords.length === 1) {
+      const word = extractedWords[0];
+      // 이미 로딩 중이거나 결과가 있으면 스킵
+      if (!loadingWords.has(word) && !wordResults.has(word)) {
+        // 500ms 후에 API 호출 (debounce)
+        const timer = setTimeout(() => {
+          fetchWordMeaning(word);
+        }, 500);
+
+        // cleanup 함수: 컴포넌트 언마운트나 extractedWords 변경 시 타이머 취소
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [extractedWords, fetchWordMeaning, loadingWords, wordResults]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
@@ -123,13 +185,6 @@ export default function Home() {
               id="word-input"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              onPaste={(e) => {
-                // 붙여넣기 시 자동으로 처리되도록 함
-                setTimeout(() => {
-                  const text = e.currentTarget.value;
-                  setInputText(text);
-                }, 0);
-              }}
               placeholder="텍스트를 붙여넣거나 입력하세요. 영어 단어가 자동으로 추출됩니다."
               className="w-full h-32 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
                        focus:ring-2 focus:ring-blue-500 focus:border-transparent 
@@ -181,6 +236,13 @@ export default function Home() {
                                     </p>
                                   </div>
                                 ))}
+                                <button
+                                  onClick={() => addToAnkiDroid(word, result)}
+                                  className="w-full mt-3 px-4 py-2 bg-blue-500 hover:bg-blue-600 
+                                           text-white rounded-md text-sm font-medium transition-colors"
+                                >
+                                  Add to Anki
+                                </button>
                               </div>
                             )}
                           </div>
