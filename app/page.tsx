@@ -13,6 +13,21 @@ export default function Home() {
   const [extractedWords, setExtractedWords] = useState<string[]>([]);
   const [loadingWords, setLoadingWords] = useState<Set<string>>(new Set());
   const [wordResults, setWordResults] = useState<Map<string, WordResult>>(new Map());
+  const [showSettings, setShowSettings] = useState(false);
+  const [apiKey, setApiKey] = useState<string>("");
+  
+  // 로컬 스토리지에서 API 키 불러오기
+  useEffect(() => {
+    const savedKey = localStorage.getItem('gemini_api_key') || '';
+    setApiKey(savedKey);
+  }, []);
+  
+  // API 키 저장
+  const saveApiKey = () => {
+    localStorage.setItem('gemini_api_key', apiKey);
+    setShowSettings(false);
+    alert('API 키가 저장되었습니다.');
+  };
 
   // 텍스트에서 영어 단어 추출
   const extractWords = (text: string): string[] => {
@@ -69,13 +84,22 @@ export default function Home() {
     // 로딩 상태 추가
     setLoadingWords(prev => new Set(prev).add(word));
 
+    // API 키 확인
+    if (!apiKey) {
+      setWordResults(prev => new Map(prev).set(word, {
+        word,
+        meanings: [{ meaning: 'API 키가 설정되지 않았습니다. 설정에서 API 키를 입력해주세요.', example: '' }]
+      }));
+      return;
+    }
+
     try {
       const response = await fetch('/api/gemini', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ word }),
+        body: JSON.stringify({ word, apiKey }),
       });
 
       if (!response.ok) {
@@ -104,7 +128,7 @@ export default function Home() {
         return next;
       });
     }
-  }, [loadingWords, wordResults]);
+  }, [loadingWords, wordResults, apiKey]);
 
   // Share 기능 - AnkiDroid로 공유
   const shareToAnkiDroid = async (word: string, result: WordResult) => {
@@ -168,16 +192,74 @@ export default function Home() {
         return () => clearTimeout(timer);
       }
     }
-  }, [extractedWords, fetchWordMeaning, loadingWords, wordResults]);
+  }, [extractedWords, fetchWordMeaning, loadingWords, wordResults, apiKey]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center py-8 px-4 sm:px-8 bg-white dark:bg-black">
         <div className="w-full max-w-2xl">
           {/* 헤더 */}
-          <h1 className="text-2xl sm:text-3xl font-bold text-center mb-8 text-black dark:text-zinc-50">
-            ankiNewCard
-          </h1>
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold text-center flex-1 text-black dark:text-zinc-50">
+              ankiNewCard
+            </h1>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              title="설정"
+            >
+              ⚙️
+            </button>
+          </div>
+          
+          {/* 설정 모달 */}
+          {showSettings && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+                <h2 className="text-xl font-bold mb-4 text-black dark:text-zinc-50">설정</h2>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                    Gemini API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="API 키를 입력하세요"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                             focus:ring-2 focus:ring-blue-500 focus:border-transparent 
+                             bg-white dark:bg-gray-700 text-black dark:text-zinc-50"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    <a 
+                      href="https://aistudio.google.com/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:underline"
+                    >
+                      Google AI Studio
+                    </a>
+                    에서 API 키를 발급받을 수 있습니다.
+                  </p>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setShowSettings(false)}
+                    className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md 
+                             text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={saveApiKey}
+                    className="px-4 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-md"
+                  >
+                    저장
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 입력 영역 */}
           <div className="mb-6">

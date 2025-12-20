@@ -11,7 +11,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { word } = await request.json();
+    const { word, apiKey } = await request.json();
 
     if (!word || typeof word !== 'string') {
       return NextResponse.json(
@@ -20,12 +20,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
+    if (!apiKey || typeof apiKey !== 'string') {
       return NextResponse.json(
-        { error: 'Gemini API 키가 설정되지 않았습니다.' },
-        { status: 500 }
+        { error: 'Gemini API 키가 필요합니다.' },
+        { status: 400 }
       );
     }
 
