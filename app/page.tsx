@@ -144,9 +144,9 @@ export default function Home() {
     
     if (result.meanings && result.meanings.length > 0) {
       result.meanings.forEach((item, idx) => {
-        backParts.push(item.meaning);
+        backParts.push(`<b>${item.meaning}</b>`);
         if (item.example) {
-          backParts.push(item.example);
+          backParts.push(` <i>${item.example}</i>`);
         }
         // 마지막이 아니면 빈 줄 추가
         if (idx < result.meanings.length - 1) {
