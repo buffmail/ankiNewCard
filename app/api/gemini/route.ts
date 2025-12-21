@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Gemini API 호출 - 영어로만 응답, Anki 카드용 간결한 형식
-    const prompt = `Provide 1-2 most important definitions for the English word "${word}" (use 3 only if the word has multiple distinct meanings), with one concise example sentence for each definition. Keep definitions and examples brief and suitable for Anki flashcards. Everything should be in English only. JSON format:
+    const prompt = `Provide most important definitions for the English word "${word}" (1 is preferred, but use up to 3 only if the word has multiple distinct meanings), with one concise example sentence for each definition. Keep definitions and examples brief and suitable for Anki flashcards. Everything should be in English only. JSON format:
 {"word": "${word}", "meanings": [{"meaning": "brief definition", "example": "concise example"}]}`;
 
     // Gemini 2.5 Flash-Lite API 엔드포인트 (더 빠른 모델)

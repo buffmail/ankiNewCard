@@ -108,8 +108,16 @@ export default function Home() {
       }
       const result: WordResult = await response.json();
 
+      const finalResult: WordResult = {
+        word,
+        meanings: result.meanings.map(meaning => ({
+          meaning: meaning.meaning,
+          example: ` - ${meaning.example}`
+        }))
+      }
+
       // 결과 저장
-      setWordResults(prev => new Map(prev).set(word, result));
+      setWordResults(prev => new Map(prev).set(word, finalResult));
     } catch (error) {
       console.error('Error fetching word meaning:', error);
       // 에러 메시지 추출
@@ -138,7 +146,7 @@ export default function Home() {
       result.meanings.forEach((item, idx) => {
         backParts.push(item.meaning);
         if (item.example) {
-          backParts.push(` - ${item.example}`);
+          backParts.push(item.example);
         }
         // 마지막이 아니면 빈 줄 추가
         if (idx < result.meanings.length - 1) {
