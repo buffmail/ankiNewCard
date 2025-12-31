@@ -137,9 +137,8 @@ export default function Home() {
     }
   }, [loadingWords, wordResults, apiKey]);
 
-  // Share 기능 - AnkiDroid로 공유
-  const shareToAnkiDroid = async (word: string, result: WordResult) => {
-    // Back 필드 포맷팅 (뜻과 예문)
+  // Back 필드 포맷팅 함수 (뜻과 예문)
+  const formatBackContent = (result: WordResult): string => {
     const backParts: string[] = [];
     
     if (result.meanings && result.meanings.length > 0) {
@@ -155,7 +154,59 @@ export default function Home() {
       });
     }
     
-    const back = backParts.join('\n');
+    return backParts.join('\n');
+  };
+
+  // Back 내용을 클립보드에 복사
+  const copyBackToClipboard = async (result: WordResult) => {
+    try {
+      const backText = formatBackContent(result);
+      await navigator.clipboard.writeText(backText);
+      // 성공 피드백 (선택사항)
+    } catch (error) {
+      console.error('Clipboard copy failed:', error);
+    }
+  };
+
+  // Long press 핸들러 생성
+  const createLongPressHandler = (result: WordResult) => {
+    let pressTimer: NodeJS.Timeout | null = null;
+    
+    const handleTouchStart = (e: React.TouchEvent) => {
+      pressTimer = setTimeout(() => {
+        copyBackToClipboard(result);
+        // 햅틱 피드백 (선택사항)
+        if ('vibrate' in navigator) {
+          navigator.vibrate(50);
+        }
+        pressTimer = null;
+      }, 500); // 500ms 이상 누르면 long press로 간주
+    };
+    
+    const handleTouchEnd = () => {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    };
+    
+    const handleTouchMove = () => {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    };
+    
+    return {
+      onTouchStart: handleTouchStart,
+      onTouchEnd: handleTouchEnd,
+      onTouchMove: handleTouchMove,
+    };
+  };
+
+  // Share 기능 - AnkiDroid로 공유
+  const shareToAnkiDroid = async (word: string, result: WordResult) => {
+    const back = formatBackContent(result);
     
     
     // Web Share API 사용
@@ -182,10 +233,8 @@ export default function Home() {
       // Web Share API를 지원하지 않는 경우 클립보드에 복사
       try {
         await navigator.clipboard.writeText(`${word}\t${back}`);
-        alert('클립보드에 복사되었습니다. AnkiDroid 앱에서 붙여넣으세요.');
       } catch (error) {
         console.error('Clipboard copy failed:', error);
-        alert('공유 기능을 사용할 수 없습니다.');
       }
     }
   };
@@ -346,9 +395,25 @@ export default function Home() {
                           {isLoading ? '...' : 'OK'}
                         </button>
                         {result && (
-                          <div className="w-full mt-2 ml-0 p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
+                          <div className="w-full mt-2 ml-0 p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 relative">
                             {result.meanings && result.meanings.length > 0 && (
-                              <div className="space-y-3">
+                              <>
+                                {/* 클립보드 복사 버튼 (우상단) */}
+                                <button
+                                  onClick={() => copyBackToClipboard(result)}
+                                  className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center 
+                                           bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 
+                                           rounded border border-gray-300 dark:border-gray-600 
+                                           transition-colors active:scale-95"
+                                  title="클립보드에 복사"
+                                  aria-label="클립보드에 복사"
+                                >
+                                  <span className="text-base">📋</span>
+                                </button>
+                                <div 
+                                  className="space-y-3"
+                                  {...createLongPressHandler(result)}
+                                >
                                 {result.meanings.map((item, idx) => (
                                   <div key={idx}>
                                     <p className="font-semibold text-gray-800 dark:text-gray-200 mb-1">
@@ -366,7 +431,8 @@ export default function Home() {
                                 >
                                   Share
                                 </button>
-                              </div>
+                                </div>
+                              </>
                             )}
                           </div>
                         )}
