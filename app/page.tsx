@@ -154,7 +154,7 @@ export default function Home() {
       });
     }
     
-    return backParts.join('\n');
+    return backParts.join('<br>');
   };
 
   // Back 내용을 클립보드에 복사
