@@ -275,7 +275,7 @@ export default function Home() {
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-2xl sm:text-3xl font-bold text-center flex-1 text-black dark:text-zinc-50">
               ankiNewCard
-            </h1>
+          </h1>
             <button
               onClick={() => setShowSettings(true)}
               className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
@@ -313,8 +313,8 @@ export default function Home() {
                       Google AI Studio
                     </a>
                     에서 API 키를 발급받을 수 있습니다.
-                  </p>
-                </div>
+          </p>
+        </div>
                 <div className="flex gap-2 justify-end">
                   <button
                     onClick={() => setShowSettings(false)}
@@ -398,13 +398,13 @@ export default function Home() {
                           <div className="w-full mt-2 ml-0 p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 relative">
                             {result.meanings && result.meanings.length > 0 && (
                               <>
-                                {/* 클립보드 복사 버튼 (우상단) */}
+                                {/* 클립보드 복사 버튼 (우상단 바깥쪽) */}
                                 <button
                                   onClick={() => copyBackToClipboard(result)}
-                                  className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center 
+                                  className="absolute -top-10 -right-2 w-8 h-8 flex items-center justify-center 
                                            bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 
                                            rounded border border-gray-300 dark:border-gray-600 
-                                           transition-colors active:scale-95"
+                                           transition-colors active:scale-95 shadow-sm"
                                   title="클립보드에 복사"
                                   aria-label="클립보드에 복사"
                                 >
