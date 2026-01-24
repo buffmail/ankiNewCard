@@ -239,6 +239,26 @@ export default function Home() {
     }
   };
 
+  // Intent URL 생성 - AnkiDroid로 Intent 전송
+  const getIntentUrl = (word: string, result: WordResult): string => {
+    const back = formatBackContent(result);
+    
+    // URL encoding
+    const encodedSubject = encodeURIComponent(word);
+    const encodedText = encodeURIComponent(back);
+    
+    // Intent scheme 구성
+    const intent = `intent://#Intent;` +
+                   `action=android.intent.action.SEND;` +
+                   `type=text/plain;` +
+                   `component=com.ichi2.anki/.IntentHandler;` +
+                   `S.android.intent.extra.SUBJECT=${encodedSubject};` +
+                   `S.android.intent.extra.TEXT=${encodedText};` +
+                   `end`;
+    
+    return intent;
+  };
+
   // 클립보드에서 텍스트 가져오기
   const pasteFromClipboard = async () => {
     try {
@@ -431,6 +451,14 @@ export default function Home() {
                                 >
                                   Share
                                 </button>
+                                <a
+                                  href={getIntentUrl(word, result)}
+                                  className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 
+                                           text-white rounded-md text-sm font-medium 
+                                           transition-colors mt-2 inline-block text-center"
+                                >
+                                  Send to Anki
+                                </a>
                                 </div>
                               </>
                             )}
