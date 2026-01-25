@@ -251,7 +251,7 @@ export default function Home() {
     const intent = `intent://#Intent;` +
                    `action=android.intent.action.SEND;` +
                    `type=text/plain;` +
-                   `component=com.ichi2.anki/.IntentHandler;` +
+                   `package=com.ichi2.anki;` +
                    `S.android.intent.extra.SUBJECT=${encodedSubject};` +
                    `S.android.intent.extra.TEXT=${encodedText};` +
                    `end`;
