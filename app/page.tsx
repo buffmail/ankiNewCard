@@ -248,15 +248,14 @@ export default function Home() {
     const encodedText = encodeURIComponent(back);
     
     // Intent scheme 구성
-    const intent = `intent://#Intent;` +
-                  `scheme=ankidroid;` +                    // required by Chrome often
-                  `package=com.ichi2.anki;` +              // important
-                  `component=com.ichi2.anki/.IntentHandler;` + // explicit
-                   `action=android.intent.action.SEND;` +
-                   `type=text/plain;` +
-                   `S.android.intent.extra.SUBJECT=${encodedSubject};` +
-                   `S.android.intent.extra.TEXT=${encodedText};` +
-                   `end`;
+    const intent = `intent:#Intent;` +
+                    `action=android.intent.action.SEND;` +
+                    `type=text/plain;` +
+                    `package=com.ichi2.anki;` +
+                    `component=com.ichi2.anki/.IntentHandler2;` + 
+                    `S.android.intent.extra.SUBJECT=${encodedSubject};` +
+                    `S.android.intent.extra.TEXT=${encodedText};` +
+                    `end;`;
     
     return intent;
   };
