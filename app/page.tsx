@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { BUILD_TIME } from "./build-time";
 
 interface WordResult {
@@ -15,6 +15,8 @@ export default function Home() {
   const [wordResults, setWordResults] = useState<Map<string, WordResult>>(new Map());
   const [showSettings, setShowSettings] = useState(false);
   const [apiKey, setApiKey] = useState<string>("");
+  const ankiButtonRef = useRef<HTMLAnchorElement | null>(null);
+  const shouldScrollToAnki = useRef(false);
   
   // 로컬 스토리지에서 API 키 불러오기
   useEffect(() => {
@@ -265,11 +267,28 @@ export default function Home() {
     try {
       const text = await navigator.clipboard.readText();
       setInputText(text);
+      // 결과가 나오면 Anki 버튼으로 스크롤
+      shouldScrollToAnki.current = true;
     } catch (error) {
       console.error('Clipboard read failed:', error);
       alert('클립보드 읽기 권한이 필요합니다.');
     }
   };
+
+  // Anki 버튼으로 스크롤 (결과가 나타날 때)
+  useEffect(() => {
+    if (shouldScrollToAnki.current && ankiButtonRef.current && wordResults.size > 0) {
+      // 약간의 지연 후 스크롤 (DOM 업데이트 완료 대기)
+      setTimeout(() => {
+        ankiButtonRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center',
+          inline: 'nearest'
+        });
+        shouldScrollToAnki.current = false;
+      }, 300);
+    }
+  }, [wordResults]);
 
   // 단어가 1개일 때 자동으로 뜻 가져오기 (입력이 끝난 후 500ms 후)
   useEffect(() => {
@@ -419,6 +438,23 @@ export default function Home() {
                           <div className="w-full mt-2 ml-0 p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 relative">
                             {result.meanings && result.meanings.length > 0 && (
                               <>
+                                {/* Anki 전송 버튼 (우상단 바깥쪽, 클립보드 버튼 왼쪽) */}
+                                <a
+                                  ref={ankiButtonRef}
+                                  href={getIntentUrl(word, result)}
+                                  className="absolute -top-10 -right-12 w-8 h-8 flex items-center justify-center 
+                                           bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 
+                                           rounded border border-gray-300 dark:border-gray-600 
+                                           transition-colors active:scale-95 shadow-sm"
+                                  title="Send to Anki"
+                                  aria-label="Send to Anki"
+                                >
+                                  <img 
+                                    src="/anki-logo.svg" 
+                                    alt="Anki" 
+                                    className="w-5 h-5"
+                                  />
+                                </a>
                                 {/* 클립보드 복사 버튼 (우상단 바깥쪽) */}
                                 <button
                                   onClick={() => copyBackToClipboard(result)}
@@ -452,14 +488,6 @@ export default function Home() {
                                 >
                                   Share
                                 </button>
-                                <a
-                                  href={getIntentUrl(word, result)}
-                                  className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 
-                                           text-white rounded-md text-sm font-medium 
-                                           transition-colors mt-2 inline-block text-center"
-                                >
-                                  Send to Anki
-                                </a>
                                 </div>
                               </>
                             )}
