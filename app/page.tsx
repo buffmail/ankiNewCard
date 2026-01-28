@@ -419,53 +419,51 @@ export default function Home() {
                     const result = wordResults.get(word);
                     
                     return (
-                      <div key={index} className="flex items-center gap-2 flex-wrap">
-                        <span className="inline-block px-3 py-1.5 bg-blue-100 dark:bg-blue-900 
-                                       text-blue-800 dark:text-blue-200 rounded-md text-sm font-medium">
-                          {word}
-                        </span>
-                        <button
-                          onClick={() => fetchWordMeaning(word)}
-                          disabled={isLoading}
-                          className="px-4 py-1.5 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 
-                                   text-white rounded-md text-sm font-medium transition-colors
-                                   disabled:cursor-not-allowed min-h-[32px] min-w-[48px]"
-                        >
-                          {isLoading ? '...' : 'OK'}
-                        </button>
+                      <div key={index} className="w-full">
+                        <div className="flex items-center gap-2 flex-wrap justify-between mb-2">
+                          <span className="inline-block px-3 py-1.5 bg-blue-100 dark:bg-blue-900 
+                                         text-blue-800 dark:text-blue-200 rounded-md text-sm font-medium">
+                            {word}
+                          </span>
+                          {/* 버튼들 (오른쪽) */}
+                          {result && result.meanings && result.meanings.length > 0 && (
+                            <div className="flex items-center gap-2">
+                              {/* 클립보드 복사 버튼 (왼쪽) */}
+                              <button
+                                onClick={() => copyBackToClipboard(result)}
+                                className="w-8 h-8 flex items-center justify-center 
+                                         bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 
+                                         rounded border border-gray-300 dark:border-gray-600 
+                                         transition-colors active:scale-95 shadow-sm"
+                                title="클립보드에 복사"
+                                aria-label="클립보드에 복사"
+                              >
+                                <span className="text-base">📋</span>
+                              </button>
+                              {/* Anki 전송 버튼 (오른쪽) */}
+                              <a
+                                ref={ankiButtonRef}
+                                href={getIntentUrl(word, result)}
+                                className="w-8 h-8 flex items-center justify-center 
+                                         bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 
+                                         rounded border border-gray-300 dark:border-gray-600 
+                                         transition-colors active:scale-95 shadow-sm"
+                                title="Send to Anki"
+                                aria-label="Send to Anki"
+                              >
+                                <img 
+                                  src="/anki-logo.svg" 
+                                  alt="Anki" 
+                                  className="w-5 h-5"
+                                />
+                              </a>
+                            </div>
+                          )}
+                        </div>
                         {result && (
                           <div className="w-full mt-2 ml-0 p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 relative">
                             {result.meanings && result.meanings.length > 0 && (
                               <>
-                                {/* Anki 전송 버튼 (우상단 바깥쪽, 클립보드 버튼 왼쪽) */}
-                                <a
-                                  ref={ankiButtonRef}
-                                  href={getIntentUrl(word, result)}
-                                  className="absolute -top-10 -right-12 w-8 h-8 flex items-center justify-center 
-                                           bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 
-                                           rounded border border-gray-300 dark:border-gray-600 
-                                           transition-colors active:scale-95 shadow-sm"
-                                  title="Send to Anki"
-                                  aria-label="Send to Anki"
-                                >
-                                  <img 
-                                    src="/anki-logo.svg" 
-                                    alt="Anki" 
-                                    className="w-5 h-5"
-                                  />
-                                </a>
-                                {/* 클립보드 복사 버튼 (우상단 바깥쪽) */}
-                                <button
-                                  onClick={() => copyBackToClipboard(result)}
-                                  className="absolute -top-10 -right-2 w-8 h-8 flex items-center justify-center 
-                                           bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 
-                                           rounded border border-gray-300 dark:border-gray-600 
-                                           transition-colors active:scale-95 shadow-sm"
-                                  title="클립보드에 복사"
-                                  aria-label="클립보드에 복사"
-                                >
-                                  <span className="text-base">📋</span>
-                                </button>
                                 <div 
                                   className="space-y-3"
                                   {...createLongPressHandler(result)}
