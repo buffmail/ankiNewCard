@@ -18,55 +18,39 @@ export default function Home() {
   const ankiButtonRef = useRef<HTMLAnchorElement | null>(null);
   const shouldScrollToAnki = useRef(false);
   
-  // 로컬 스토리지에서 API 키 불러오기
   useEffect(() => {
     const savedKey = localStorage.getItem('gemini_api_key') || '';
     setApiKey(savedKey);
   }, []);
   
-  // API 키 저장
   const saveApiKey = () => {
     localStorage.setItem('gemini_api_key', apiKey);
     setShowSettings(false);
     alert('API 키가 저장되었습니다.');
   };
 
-  // 텍스트에서 영어 단어 추출
   const extractWords = (text: string): string[] => {
-    // 첫 줄만 처리
     const firstLine = text.split('\n')[0].trim();
-    
     if (!firstLine) return [];
     
-    // 영어 단어만 추출 (알파벳으로만 구성된 단어)
     const wordRegex = /\b[a-zA-Z]+\b/g;
     const words = firstLine.match(wordRegex) || [];
     
-    // "Learn" 접두사 제거 및 소문자로 통일
+    // Remove "learn" prefix and filter out standalone "learn"
     const processedWords = words
       .map(word => {
         const lowerWord = word.toLowerCase();
-        // "learn" 단어 자체는 제외
-        if (lowerWord === 'learn') {
-          return null;
-        }
-        // "learn"으로 시작하면 접두사 제거
+        if (lowerWord === 'learn') return null;
         if (lowerWord.startsWith('learn')) {
-          const withoutLearn = lowerWord.replace(/^learn/, '');
-          return withoutLearn || null; // 제거 후 빈 문자열이면 null 반환
+          return lowerWord.replace(/^learn/, '') || null;
         }
         return lowerWord;
       })
-      .filter((word): word is string => word !== null && word.length > 0); // null 및 빈 문자열 제거
+      .filter((word): word is string => word !== null && word.length > 0);
     
-    // 중복 제거 및 정렬
-    const uniqueWords = Array.from(new Set(processedWords))
-      .sort();
-    
-    return uniqueWords;
+    return Array.from(new Set(processedWords)).sort();
   };
 
-  // inputText가 변경될 때마다 단어 추출
   useEffect(() => {
     if (inputText.trim()) {
       const words = extractWords(inputText);
@@ -76,17 +60,13 @@ export default function Home() {
     }
   }, [inputText]);
 
-  // Gemini API 호출 함수
   const fetchWordMeaning = useCallback(async (word: string) => {
-    // 이미 로딩 중이거나 결과가 있으면 스킵
     if (loadingWords.has(word) || wordResults.has(word)) {
       return;
     }
 
-    // 로딩 상태 추가
     setLoadingWords(prev => new Set(prev).add(word));
 
-    // API 키 확인
     if (!apiKey) {
       setWordResults(prev => new Map(prev).set(word, {
         word,
@@ -118,19 +98,16 @@ export default function Home() {
         }))
       }
 
-      // 결과 저장
       setWordResults(prev => new Map(prev).set(word, finalResult));
     } catch (error) {
       console.error('Error fetching word meaning:', error);
-      // 에러 메시지 추출
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch definition.';
-      // 에러 발생 시에도 결과 저장 (에러 메시지 표시용)
+      // Store error message in results for display
       setWordResults(prev => new Map(prev).set(word, {
         word,
         meanings: [{ meaning: errorMessage, example: '' }]
       }));
     } finally {
-      // 로딩 상태 제거
       setLoadingWords(prev => {
         const next = new Set(prev);
         next.delete(word);
@@ -139,7 +116,6 @@ export default function Home() {
     }
   }, [loadingWords, wordResults, apiKey]);
 
-  // Back 필드 포맷팅 함수 (뜻과 예문)
   const formatBackContent = (result: WordResult): string => {
     const backParts: string[] = [];
     
@@ -149,7 +125,6 @@ export default function Home() {
         if (item.example) {
           backParts.push(`<span style="font-size: small;"><i>${item.example}</i></span>`);
         }
-        // 마지막이 아니면 빈 줄 추가
         if (idx < result.meanings.length - 1) {
           backParts.push('');
         }
@@ -159,30 +134,26 @@ export default function Home() {
     return backParts.join('<br>');
   };
 
-  // Back 내용을 클립보드에 복사
   const copyBackToClipboard = async (result: WordResult) => {
     try {
       const backText = formatBackContent(result);
       await navigator.clipboard.writeText(backText);
-      // 성공 피드백 (선택사항)
     } catch (error) {
       console.error('Clipboard copy failed:', error);
     }
   };
 
-  // Long press 핸들러 생성
   const createLongPressHandler = (result: WordResult) => {
     let pressTimer: NodeJS.Timeout | null = null;
     
     const handleTouchStart = (e: React.TouchEvent) => {
       pressTimer = setTimeout(() => {
         copyBackToClipboard(result);
-        // 햅틱 피드백 (선택사항)
         if ('vibrate' in navigator) {
           navigator.vibrate(50);
         }
         pressTimer = null;
-      }, 500); // 500ms 이상 누르면 long press로 간주
+      }, 500);
     };
     
     const handleTouchEnd = () => {
@@ -206,12 +177,9 @@ export default function Home() {
     };
   };
 
-  // Share 기능 - AnkiDroid로 공유
   const shareToAnkiDroid = async (word: string, result: WordResult) => {
     const back = formatBackContent(result);
     
-    
-    // Web Share API 사용
     if (navigator.share) {
       try {
         await navigator.share({
@@ -219,10 +187,9 @@ export default function Home() {
           title: word,
         });
       } catch (error) {
-        // 사용자가 공유를 취소한 경우는 에러로 처리하지 않음
+        // Ignore user cancellation
         if ((error as Error).name !== 'AbortError') {
           console.error('Share failed:', error);
-          // 공유 실패시 클립보드로 폴백
           try {
             await navigator.clipboard.writeText(`${word}\t${back}`);
             alert('공유 실패. 클립보드에 복사되었습니다.\nAnkiDroid 앱에서 붙여넣으세요.');
@@ -232,7 +199,6 @@ export default function Home() {
         }
       }
     } else {
-      // Web Share API를 지원하지 않는 경우 클립보드에 복사
       try {
         await navigator.clipboard.writeText(`${word}\t${back}`);
       } catch (error) {
@@ -241,15 +207,11 @@ export default function Home() {
     }
   };
 
-  // Intent URL 생성 - AnkiDroid로 Intent 전송
   const getIntentUrl = (word: string, result: WordResult): string => {
     const back = formatBackContent(result);
-    
-    // URL encoding
     const encodedSubject = encodeURIComponent(word);
     const encodedText = encodeURIComponent(back);
     
-    // Intent scheme 구성
     const intent = `intent:#Intent;` +
                     `action=android.intent.action.SEND;` +
                     `type=text/plain;` +
@@ -262,12 +224,10 @@ export default function Home() {
     return intent;
   };
 
-  // 클립보드에서 텍스트 가져오기
   const pasteFromClipboard = async () => {
     try {
       const text = await navigator.clipboard.readText();
       setInputText(text);
-      // 결과가 나오면 Anki 버튼으로 스크롤
       shouldScrollToAnki.current = true;
     } catch (error) {
       console.error('Clipboard read failed:', error);
@@ -275,10 +235,9 @@ export default function Home() {
     }
   };
 
-  // Anki 버튼으로 스크롤 (결과가 나타날 때)
   useEffect(() => {
     if (shouldScrollToAnki.current && ankiButtonRef.current && wordResults.size > 0) {
-      // 약간의 지연 후 스크롤 (DOM 업데이트 완료 대기)
+      // Wait for DOM update before scrolling
       setTimeout(() => {
         ankiButtonRef.current?.scrollIntoView({ 
           behavior: 'smooth', 
@@ -290,18 +249,13 @@ export default function Home() {
     }
   }, [wordResults]);
 
-  // 단어가 1개일 때 자동으로 뜻 가져오기 (입력이 끝난 후 500ms 후)
   useEffect(() => {
     if (extractedWords.length === 1) {
       const word = extractedWords[0];
-      // 이미 로딩 중이거나 결과가 있으면 스킵
       if (!loadingWords.has(word) && !wordResults.has(word)) {
-        // 500ms 후에 API 호출 (debounce)
         const timer = setTimeout(() => {
           fetchWordMeaning(word);
         }, 500);
-
-        // cleanup 함수: 컴포넌트 언마운트나 extractedWords 변경 시 타이머 취소
         return () => clearTimeout(timer);
       }
     }
@@ -311,7 +265,6 @@ export default function Home() {
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center py-8 px-4 sm:px-8 bg-white dark:bg-black">
         <div className="w-full max-w-2xl">
-          {/* 헤더 */}
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-2xl sm:text-3xl font-bold text-center flex-1 text-black dark:text-zinc-50">
               ankiNewCard
@@ -373,7 +326,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* 입력 영역 */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
               <label 
@@ -404,7 +356,6 @@ export default function Home() {
             />
           </div>
 
-          {/* 추출된 단어 표시 영역 */}
           {extractedWords.length > 0 && (
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
@@ -425,10 +376,8 @@ export default function Home() {
                                          text-blue-800 dark:text-blue-200 rounded-md text-sm font-medium">
                             {word}
                           </span>
-                          {/* 버튼들 (오른쪽) */}
                           {result && result.meanings && result.meanings.length > 0 && (
                             <div className="flex items-center gap-2">
-                              {/* 클립보드 복사 버튼 (왼쪽) */}
                               <button
                                 onClick={() => copyBackToClipboard(result)}
                                 className="w-8 h-8 flex items-center justify-center 
@@ -440,7 +389,6 @@ export default function Home() {
                               >
                                 <span className="text-base">📋</span>
                               </button>
-                              {/* Anki 전송 버튼 (오른쪽) */}
                               <a
                                 ref={ankiButtonRef}
                                 href={getIntentUrl(word, result)}
@@ -498,14 +446,12 @@ export default function Home() {
             </div>
           )}
 
-          {/* 안내 메시지 */}
           {extractedWords.length === 0 && inputText.trim() === "" && (
             <div className="text-center text-gray-500 dark:text-gray-400 text-sm">
               텍스트를 붙여넣으면 영어 단어가 자동으로 추출됩니다.
             </div>
           )}
 
-          {/* 빌드 시간 표시 */}
           <div className="mt-8 text-center">
             <p className="text-xs text-gray-400 dark:text-gray-600">
               Build: {BUILD_TIME} KST
