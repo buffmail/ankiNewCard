@@ -293,33 +293,47 @@ export default function Home() {
           )}
 
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <label 
-                htmlFor="word-input" 
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-              >
-                텍스트 붙여넣기
-              </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                id="word-input"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="텍스트를 붙여넣거나 입력하세요"
+                className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
+                         focus:ring-2 focus:ring-blue-500 focus:border-transparent 
+                         bg-white dark:bg-gray-800 text-black dark:text-zinc-50"
+              />
               <button
                 onClick={pasteFromClipboard}
-                className="px-3 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600
-                         text-gray-700 dark:text-gray-300 rounded-md border border-gray-300 dark:border-gray-600
-                         transition-colors"
+                className="w-10 h-10 flex items-center justify-center 
+                         bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600
+                         rounded-lg border border-gray-300 dark:border-gray-600
+                         transition-colors active:scale-95"
                 title="클립보드에서 붙여넣기"
+                aria-label="클립보드에서 붙여넣기"
               >
-                📋 클립보드
+                <span className="text-base">📋</span>
               </button>
+              {extractedWord && wordResults.get(extractedWord) && wordResults.get(extractedWord)!.meanings && wordResults.get(extractedWord)!.meanings.length > 0 && (
+                <a
+                  ref={ankiButtonRef}
+                  href={getIntentUrl(extractedWord, wordResults.get(extractedWord)!)}
+                  className="w-10 h-10 flex items-center justify-center 
+                           bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600
+                           rounded-lg border border-gray-300 dark:border-gray-600
+                           transition-colors active:scale-95"
+                  title="Send to Anki"
+                  aria-label="Send to Anki"
+                >
+                  <img 
+                    src="/anki-logo.svg" 
+                    alt="Anki" 
+                    className="w-5 h-5"
+                  />
+                </a>
+              )}
             </div>
-            <input
-              type="text"
-              id="word-input"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="텍스트를 붙여넣거나 입력하세요. 영어 단어가 자동으로 추출됩니다."
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
-                       focus:ring-2 focus:ring-blue-500 focus:border-transparent 
-                       bg-white dark:bg-gray-800 text-black dark:text-zinc-50"
-            />
           </div>
 
           {extractedWord && (() => {
@@ -328,52 +342,28 @@ export default function Home() {
             
             return (
               <div className="mb-6">
-                <div className="w-full">
-                  <div className="flex items-center gap-2 flex-wrap justify-between mb-2">
-                    <span className="inline-block px-3 py-1.5 bg-blue-100 dark:bg-blue-900 
-                                   text-blue-800 dark:text-blue-200 rounded-md text-sm font-medium">
-                      {extractedWord}
-                    </span>
-                    {isLoading && (
-                      <span className="text-gray-500 dark:text-gray-400 text-sm">로딩 중...</span>
-                    )}
-                    {result && result.meanings && result.meanings.length > 0 && (
-                      <div className="flex items-center gap-2">
+                {isLoading && (
+                  <div className="text-center text-gray-500 dark:text-gray-400 text-sm mb-2">
+                    로딩 중...
+                  </div>
+                )}
+                {result && (
+                  <div className="w-full p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 relative">
+                    {result.meanings && result.meanings.length > 0 && (
+                      <>
                         <button
                           onClick={() => copyBackToClipboard(result)}
-                          className="w-8 h-8 flex items-center justify-center 
+                          className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center 
                                    bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 
                                    rounded border border-gray-300 dark:border-gray-600 
-                                   transition-colors active:scale-95 shadow-sm"
+                                   transition-colors active:scale-95"
                           title="클립보드에 복사"
                           aria-label="클립보드에 복사"
                         >
                           <span className="text-base">📋</span>
                         </button>
-                        <a
-                          ref={ankiButtonRef}
-                          href={getIntentUrl(extractedWord, result)}
-                          className="w-8 h-8 flex items-center justify-center 
-                                   bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 
-                                   rounded border border-gray-300 dark:border-gray-600 
-                                   transition-colors active:scale-95 shadow-sm"
-                          title="Send to Anki"
-                          aria-label="Send to Anki"
-                        >
-                          <img 
-                            src="/anki-logo.svg" 
-                            alt="Anki" 
-                            className="w-5 h-5"
-                          />
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                  {result && (
-                    <div className="w-full mt-2 ml-0 p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 relative">
-                      {result.meanings && result.meanings.length > 0 && (
                         <div 
-                          className="space-y-3"
+                          className="space-y-3 pr-10"
                           {...createLongPressHandler(result)}
                         >
                           {result.meanings.map((item, idx) => (
@@ -387,10 +377,10 @@ export default function Home() {
                             </div>
                           ))}
                         </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })()}
