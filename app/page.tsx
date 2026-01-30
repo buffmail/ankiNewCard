@@ -15,6 +15,7 @@ export default function Home() {
   const [wordResults, setWordResults] = useState<Map<string, WordResult>>(new Map());
   const [showSettings, setShowSettings] = useState(false);
   const [apiKey, setApiKey] = useState<string>("");
+  const [clickedAnkiWord, setClickedAnkiWord] = useState<string | null>(null);
   const ankiButtonRef = useRef<HTMLAnchorElement | null>(null);
   const shouldScrollToAnki = useRef(false);
   
@@ -52,8 +53,14 @@ export default function Home() {
       setExtractedWord(word);
     } else {
       setExtractedWord(null);
+      setClickedAnkiWord(null);
     }
   }, [inputText]);
+
+  // Reset Anki button state when extracted word changes
+  useEffect(() => {
+    setClickedAnkiWord(null);
+  }, [extractedWord]);
 
   const fetchWordMeaning = useCallback(async (word: string) => {
     if (loadingWords.has(word) || wordResults.has(word)) {
@@ -319,17 +326,21 @@ export default function Home() {
                 <a
                   ref={ankiButtonRef}
                   href={getIntentUrl(extractedWord, wordResults.get(extractedWord)!)}
-                  className="w-10 h-10 flex items-center justify-center 
-                           bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600
+                  onClick={() => setClickedAnkiWord(extractedWord)}
+                  className={`w-10 h-10 flex items-center justify-center 
                            rounded-lg border border-gray-300 dark:border-gray-600
-                           transition-colors active:scale-95"
+                           transition-colors active:scale-95 ${
+                             clickedAnkiWord === extractedWord
+                               ? 'bg-gray-300 dark:bg-gray-600 opacity-50 cursor-not-allowed'
+                               : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
+                           }`}
                   title="Send to Anki"
                   aria-label="Send to Anki"
                 >
                   <img 
                     src="/anki-logo.svg" 
                     alt="Anki" 
-                    className="w-5 h-5"
+                    className={`w-5 h-5 ${clickedAnkiWord === extractedWord ? 'opacity-50' : ''}`}
                   />
                 </a>
               )}
