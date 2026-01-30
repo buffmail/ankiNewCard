@@ -16,6 +16,7 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false);
   const [apiKey, setApiKey] = useState<string>("");
   const [clickedAnkiWord, setClickedAnkiWord] = useState<string | null>(null);
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
   const ankiButtonRef = useRef<HTMLAnchorElement | null>(null);
   const shouldScrollToAnki = useRef(false);
   const autoTriggeredWords = useRef<Set<string>>(new Set());
@@ -23,6 +24,10 @@ export default function Home() {
   useEffect(() => {
     const savedKey = localStorage.getItem('gemini_api_key') || '';
     setApiKey(savedKey);
+    
+    // Detect mobile on client side only
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    setIsMobileDevice(/mobile/i.test(userAgent) || /android/i.test(userAgent) || /iphone|ipad|ipod/i.test(userAgent));
   }, []);
   
   const saveApiKey = () => {
@@ -187,6 +192,12 @@ export default function Home() {
     return /android/i.test(userAgent) && /mobile/i.test(userAgent);
   };
 
+  const isMobile = (): boolean => {
+    if (typeof window === 'undefined') return false;
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    return /mobile/i.test(userAgent) || /android/i.test(userAgent) || /iphone|ipad|ipod/i.test(userAgent);
+  };
+
   const getIntentUrl = (word: string, result: WordResult): string => {
     const back = formatBackContent(result);
     const encodedSubject = encodeURIComponent(word);
@@ -268,7 +279,7 @@ export default function Home() {
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center py-8 px-4 sm:px-8 bg-white dark:bg-black">
         <div className="w-full max-w-2xl">
-          {!isAndroidMobile() && (
+          {!isMobileDevice && (
             <div className="flex items-center justify-center mb-8">
               <h1 className="text-2xl sm:text-3xl font-bold text-center text-black dark:text-zinc-50">
                 ankiNewCard
@@ -376,26 +387,28 @@ export default function Home() {
                         >
                           <span className="text-base">📋</span>
                         </button>
-                        <a
-                          ref={ankiButtonRef}
-                          href={getIntentUrl(extractedWord, result)}
-                          onClick={() => setClickedAnkiWord(extractedWord)}
-                          className={`absolute top-12 right-2 w-8 h-8 flex items-center justify-center 
-                                    rounded border border-gray-300 dark:border-gray-600
-                                    transition-colors active:scale-95 ${
-                                      clickedAnkiWord === extractedWord
-                                        ? 'bg-gray-300 dark:bg-gray-600 opacity-50 cursor-not-allowed'
-                                        : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
-                                    }`}
-                          title="Send to Anki"
-                          aria-label="Send to Anki"
-                        >
-                          <img 
-                            src="/anki-icon.png" 
-                            alt="Anki" 
-                            className={`w-5 h-5 ${clickedAnkiWord === extractedWord ? 'opacity-50' : ''}`}
-                          />
-                        </a>
+                        {isMobileDevice && (
+                          <a
+                            ref={ankiButtonRef}
+                            href={getIntentUrl(extractedWord, result)}
+                            onClick={() => setClickedAnkiWord(extractedWord)}
+                            className={`absolute top-12 right-2 w-8 h-8 flex items-center justify-center 
+                                      rounded border border-gray-300 dark:border-gray-600
+                                      transition-colors active:scale-95 ${
+                                        clickedAnkiWord === extractedWord
+                                          ? 'bg-gray-300 dark:bg-gray-600 opacity-50 cursor-not-allowed'
+                                          : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                      }`}
+                            title="Send to Anki"
+                            aria-label="Send to Anki"
+                          >
+                            <img 
+                              src="/anki-icon.png" 
+                              alt="Anki" 
+                              className={`w-5 h-5 ${clickedAnkiWord === extractedWord ? 'opacity-50' : ''}`}
+                            />
+                          </a>
+                        )}
                         <div 
                           className="space-y-3 pr-10"
                           {...createLongPressHandler(result)}
