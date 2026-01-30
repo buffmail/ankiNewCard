@@ -268,18 +268,13 @@ export default function Home() {
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center py-8 px-4 sm:px-8 bg-white dark:bg-black">
         <div className="w-full max-w-2xl">
-          <div className="flex items-center justify-between mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-center flex-1 text-black dark:text-zinc-50">
-              ankiNewCard
-          </h1>
-            <button
-              onClick={() => setShowSettings(true)}
-              className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-              title="설정"
-            >
-              ⚙️
-            </button>
-          </div>
+          {!isAndroidMobile() && (
+            <div className="flex items-center justify-center mb-8">
+              <h1 className="text-2xl sm:text-3xl font-bold text-center text-black dark:text-zinc-50">
+                ankiNewCard
+              </h1>
+            </div>
+          )}
           
           {showSettings && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -352,28 +347,6 @@ export default function Home() {
               >
                 <span className="text-base">📋</span>
               </button>
-              {extractedWord && wordResults.get(extractedWord) && wordResults.get(extractedWord)!.meanings && wordResults.get(extractedWord)!.meanings.length > 0 && (
-                <a
-                  ref={ankiButtonRef}
-                  href={getIntentUrl(extractedWord, wordResults.get(extractedWord)!)}
-                  onClick={() => setClickedAnkiWord(extractedWord)}
-                  className={`w-10 h-10 flex items-center justify-center 
-                           rounded-lg border border-gray-300 dark:border-gray-600
-                           transition-colors active:scale-95 ${
-                             clickedAnkiWord === extractedWord
-                               ? 'bg-gray-300 dark:bg-gray-600 opacity-50 cursor-not-allowed'
-                               : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
-                           }`}
-                  title="Send to Anki"
-                  aria-label="Send to Anki"
-                >
-                  <img 
-                    src="/anki-logo.svg" 
-                    alt="Anki" 
-                    className={`w-5 h-5 ${clickedAnkiWord === extractedWord ? 'opacity-50' : ''}`}
-                  />
-                </a>
-              )}
             </div>
           </div>
 
@@ -403,6 +376,26 @@ export default function Home() {
                         >
                           <span className="text-base">📋</span>
                         </button>
+                        <a
+                          ref={ankiButtonRef}
+                          href={getIntentUrl(extractedWord, result)}
+                          onClick={() => setClickedAnkiWord(extractedWord)}
+                          className={`absolute top-12 right-2 w-8 h-8 flex items-center justify-center 
+                                    rounded border border-gray-300 dark:border-gray-600
+                                    transition-colors active:scale-95 ${
+                                      clickedAnkiWord === extractedWord
+                                        ? 'bg-gray-300 dark:bg-gray-600 opacity-50 cursor-not-allowed'
+                                        : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                    }`}
+                          title="Send to Anki"
+                          aria-label="Send to Anki"
+                        >
+                          <img 
+                            src="/anki-icon.png" 
+                            alt="Anki" 
+                            className={`w-5 h-5 ${clickedAnkiWord === extractedWord ? 'opacity-50' : ''}`}
+                          />
+                        </a>
                         <div 
                           className="space-y-3 pr-10"
                           {...createLongPressHandler(result)}
@@ -432,10 +425,17 @@ export default function Home() {
             </div>
           )}
 
-          <div className="mt-8 text-center">
+          <div className="mt-8 flex items-center justify-center gap-2">
             <p className="text-xs text-gray-400 dark:text-gray-600">
               Build: {BUILD_TIME} KST
             </p>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="px-2 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              title="설정"
+            >
+              ⚙️
+            </button>
           </div>
         </div>
       </main>
