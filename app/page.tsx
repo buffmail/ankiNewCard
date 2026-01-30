@@ -10,7 +10,7 @@ interface WordResult {
 
 export default function Home() {
   const [inputText, setInputText] = useState("");
-  const [extractedWords, setExtractedWords] = useState<string[]>([]);
+  const [extractedWord, setExtractedWord] = useState<string | null>(null);
   const [loadingWords, setLoadingWords] = useState<Set<string>>(new Set());
   const [wordResults, setWordResults] = useState<Map<string, WordResult>>(new Map());
   const [showSettings, setShowSettings] = useState(false);
@@ -29,34 +29,29 @@ export default function Home() {
     alert('API 키가 저장되었습니다.');
   };
 
-  const extractWords = (text: string): string[] => {
+  const extractWord = (text: string): string | null => {
     const firstLine = text.split('\n')[0].trim();
-    if (!firstLine) return [];
+    if (!firstLine) return null;
     
     const wordRegex = /\b[a-zA-Z]+\b/g;
     const words = firstLine.match(wordRegex) || [];
+    if (words.length === 0 || !words[0]) return null;
     
-    // Remove "learn" prefix and filter out standalone "learn"
-    const processedWords = words
-      .map(word => {
-        const lowerWord = word.toLowerCase();
-        if (lowerWord === 'learn') return null;
-        if (lowerWord.startsWith('learn')) {
-          return lowerWord.replace(/^learn/, '') || null;
-        }
-        return lowerWord;
-      })
-      .filter((word): word is string => word !== null && word.length > 0);
-    
-    return Array.from(new Set(processedWords)).sort();
+    const firstWord = words[0].toLowerCase();
+    if (firstWord === 'learn') return null;
+    if (firstWord.startsWith('learn')) {
+      const withoutLearn = firstWord.replace(/^learn/, '');
+      return withoutLearn || null;
+    }
+    return firstWord;
   };
 
   useEffect(() => {
     if (inputText.trim()) {
-      const words = extractWords(inputText);
-      setExtractedWords(words);
+      const word = extractWord(inputText);
+      setExtractedWord(word);
     } else {
-      setExtractedWords([]);
+      setExtractedWord(null);
     }
   }, [inputText]);
 
@@ -177,36 +172,6 @@ export default function Home() {
     };
   };
 
-  const shareToAnkiDroid = async (word: string, result: WordResult) => {
-    const back = formatBackContent(result);
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          text: back,
-          title: word,
-        });
-      } catch (error) {
-        // Ignore user cancellation
-        if ((error as Error).name !== 'AbortError') {
-          console.error('Share failed:', error);
-          try {
-            await navigator.clipboard.writeText(`${word}\t${back}`);
-            alert('공유 실패. 클립보드에 복사되었습니다.\nAnkiDroid 앱에서 붙여넣으세요.');
-          } catch (clipError) {
-            console.error('Clipboard fallback failed:', clipError);
-          }
-        }
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(`${word}\t${back}`);
-      } catch (error) {
-        console.error('Clipboard copy failed:', error);
-      }
-    }
-  };
-
   const getIntentUrl = (word: string, result: WordResult): string => {
     const back = formatBackContent(result);
     const encodedSubject = encodeURIComponent(word);
@@ -227,7 +192,9 @@ export default function Home() {
   const pasteFromClipboard = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      setInputText(text);
+      const firstLine = text.split('\n')[0].trim();
+      const processedText = firstLine.replace(/^Learn/i, '').trim();
+      setInputText(processedText);
       shouldScrollToAnki.current = true;
     } catch (error) {
       console.error('Clipboard read failed:', error);
@@ -250,16 +217,15 @@ export default function Home() {
   }, [wordResults]);
 
   useEffect(() => {
-    if (extractedWords.length === 1) {
-      const word = extractedWords[0];
-      if (!loadingWords.has(word) && !wordResults.has(word)) {
+    if (extractedWord) {
+      if (!loadingWords.has(extractedWord) && !wordResults.has(extractedWord)) {
         const timer = setTimeout(() => {
-          fetchWordMeaning(word);
+          fetchWordMeaning(extractedWord);
         }, 500);
         return () => clearTimeout(timer);
       }
     }
-  }, [extractedWords, fetchWordMeaning, loadingWords, wordResults, apiKey]);
+  }, [extractedWord, fetchWordMeaning, loadingWords, wordResults, apiKey]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
@@ -344,109 +310,92 @@ export default function Home() {
                 📋 클립보드
               </button>
             </div>
-            <textarea
+            <input
+              type="text"
               id="word-input"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder="텍스트를 붙여넣거나 입력하세요. 영어 단어가 자동으로 추출됩니다."
-              className="w-full h-32 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
                        focus:ring-2 focus:ring-blue-500 focus:border-transparent 
-                       bg-white dark:bg-gray-800 text-black dark:text-zinc-50
-                       resize-none"
+                       bg-white dark:bg-gray-800 text-black dark:text-zinc-50"
             />
           </div>
 
-          {extractedWords.length > 0 && (
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold text-black dark:text-zinc-50">
-                  추출된 단어 ({extractedWords.length}개)
-                </h2>
-              </div>
-              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                <div className="flex flex-col gap-3">
-                  {extractedWords.map((word, index) => {
-                    const isLoading = loadingWords.has(word);
-                    const result = wordResults.get(word);
-                    
-                    return (
-                      <div key={index} className="w-full">
-                        <div className="flex items-center gap-2 flex-wrap justify-between mb-2">
-                          <span className="inline-block px-3 py-1.5 bg-blue-100 dark:bg-blue-900 
-                                         text-blue-800 dark:text-blue-200 rounded-md text-sm font-medium">
-                            {word}
-                          </span>
-                          {result && result.meanings && result.meanings.length > 0 && (
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => copyBackToClipboard(result)}
-                                className="w-8 h-8 flex items-center justify-center 
-                                         bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 
-                                         rounded border border-gray-300 dark:border-gray-600 
-                                         transition-colors active:scale-95 shadow-sm"
-                                title="클립보드에 복사"
-                                aria-label="클립보드에 복사"
-                              >
-                                <span className="text-base">📋</span>
-                              </button>
-                              <a
-                                ref={ankiButtonRef}
-                                href={getIntentUrl(word, result)}
-                                className="w-8 h-8 flex items-center justify-center 
-                                         bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 
-                                         rounded border border-gray-300 dark:border-gray-600 
-                                         transition-colors active:scale-95 shadow-sm"
-                                title="Send to Anki"
-                                aria-label="Send to Anki"
-                              >
-                                <img 
-                                  src="/anki-logo.svg" 
-                                  alt="Anki" 
-                                  className="w-5 h-5"
-                                />
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                        {result && (
-                          <div className="w-full mt-2 ml-0 p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 relative">
-                            {result.meanings && result.meanings.length > 0 && (
-                              <>
-                                <div 
-                                  className="space-y-3"
-                                  {...createLongPressHandler(result)}
-                                >
-                                {result.meanings.map((item, idx) => (
-                                  <div key={idx}>
-                                    <p className="font-semibold text-gray-800 dark:text-gray-200 mb-1">
-                                      {item.meaning}
-                                    </p>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400 italic">
-                                      {item.example}
-                                    </p>
-                                  </div>
-                                ))}
-                                <button
-                                  onClick={() => shareToAnkiDroid(word, result)}
-                                  className="w-full mt-3 px-4 py-2 bg-blue-500 hover:bg-blue-600 
-                                           text-white rounded-md text-sm font-medium transition-colors"
-                                >
-                                  Share
-                                </button>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        )}
+          {extractedWord && (() => {
+            const result = wordResults.get(extractedWord);
+            const isLoading = loadingWords.has(extractedWord);
+            
+            return (
+              <div className="mb-6">
+                <div className="w-full">
+                  <div className="flex items-center gap-2 flex-wrap justify-between mb-2">
+                    <span className="inline-block px-3 py-1.5 bg-blue-100 dark:bg-blue-900 
+                                   text-blue-800 dark:text-blue-200 rounded-md text-sm font-medium">
+                      {extractedWord}
+                    </span>
+                    {isLoading && (
+                      <span className="text-gray-500 dark:text-gray-400 text-sm">로딩 중...</span>
+                    )}
+                    {result && result.meanings && result.meanings.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => copyBackToClipboard(result)}
+                          className="w-8 h-8 flex items-center justify-center 
+                                   bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 
+                                   rounded border border-gray-300 dark:border-gray-600 
+                                   transition-colors active:scale-95 shadow-sm"
+                          title="클립보드에 복사"
+                          aria-label="클립보드에 복사"
+                        >
+                          <span className="text-base">📋</span>
+                        </button>
+                        <a
+                          ref={ankiButtonRef}
+                          href={getIntentUrl(extractedWord, result)}
+                          className="w-8 h-8 flex items-center justify-center 
+                                   bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 
+                                   rounded border border-gray-300 dark:border-gray-600 
+                                   transition-colors active:scale-95 shadow-sm"
+                          title="Send to Anki"
+                          aria-label="Send to Anki"
+                        >
+                          <img 
+                            src="/anki-logo.svg" 
+                            alt="Anki" 
+                            className="w-5 h-5"
+                          />
+                        </a>
                       </div>
-                    );
-                  })}
+                    )}
+                  </div>
+                  {result && (
+                    <div className="w-full mt-2 ml-0 p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 relative">
+                      {result.meanings && result.meanings.length > 0 && (
+                        <div 
+                          className="space-y-3"
+                          {...createLongPressHandler(result)}
+                        >
+                          {result.meanings.map((item, idx) => (
+                            <div key={idx}>
+                              <p className="font-semibold text-gray-800 dark:text-gray-200 mb-1">
+                                {item.meaning}
+                              </p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 italic">
+                                {item.example}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
-          {extractedWords.length === 0 && inputText.trim() === "" && (
+          {!extractedWord && inputText.trim() === "" && (
             <div className="text-center text-gray-500 dark:text-gray-400 text-sm">
               텍스트를 붙여넣으면 영어 단어가 자동으로 추출됩니다.
             </div>
