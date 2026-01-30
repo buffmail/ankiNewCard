@@ -18,6 +18,7 @@ export default function Home() {
   const [clickedAnkiWord, setClickedAnkiWord] = useState<string | null>(null);
   const ankiButtonRef = useRef<HTMLAnchorElement | null>(null);
   const shouldScrollToAnki = useRef(false);
+  const autoTriggeredWords = useRef<Set<string>>(new Set());
   
   useEffect(() => {
     const savedKey = localStorage.getItem('gemini_api_key') || '';
@@ -60,6 +61,7 @@ export default function Home() {
   // Reset Anki button state when extracted word changes
   useEffect(() => {
     setClickedAnkiWord(null);
+    autoTriggeredWords.current.clear();
   }, [extractedWord]);
 
   const fetchWordMeaning = useCallback(async (word: string) => {
@@ -179,6 +181,12 @@ export default function Home() {
     };
   };
 
+  const isAndroidMobile = (): boolean => {
+    if (typeof window === 'undefined') return false;
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    return /android/i.test(userAgent) && /mobile/i.test(userAgent);
+  };
+
   const getIntentUrl = (word: string, result: WordResult): string => {
     const back = formatBackContent(result);
     const encodedSubject = encodeURIComponent(word);
@@ -194,6 +202,12 @@ export default function Home() {
                     `end;`;
     
     return intent;
+  };
+
+  const triggerAnkiIntent = (word: string, result: WordResult) => {
+    const intentUrl = getIntentUrl(word, result);
+    window.location.href = intentUrl;
+    setClickedAnkiWord(word);
   };
 
   const pasteFromClipboard = async () => {
@@ -233,6 +247,22 @@ export default function Home() {
       }
     }
   }, [extractedWord, fetchWordMeaning, loadingWords, wordResults, apiKey]);
+
+  // Auto-trigger Anki intent on Android mobile when result is available
+  useEffect(() => {
+    if (extractedWord && isAndroidMobile()) {
+      const result = wordResults.get(extractedWord);
+      if (result && result.meanings && result.meanings.length > 0 && !autoTriggeredWords.current.has(extractedWord)) {
+        // Mark as triggered to prevent duplicate calls
+        autoTriggeredWords.current.add(extractedWord);
+        // Small delay to ensure UI is updated
+        const timer = setTimeout(() => {
+          triggerAnkiIntent(extractedWord, result);
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [extractedWord, wordResults]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
