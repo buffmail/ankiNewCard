@@ -379,11 +379,6 @@ export default function Home() {
             
             return (
               <div className="mb-6">
-                {isLoading && (
-                  <div className="text-center text-gray-500 dark:text-gray-400 text-sm mb-2">
-                    로딩 중...
-                  </div>
-                )}
                 {result && (
                   <div className={`w-full p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 relative transition-opacity duration-300 ${
                     shouldDim ? 'opacity-50' : 'opacity-100'
