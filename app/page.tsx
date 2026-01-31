@@ -347,19 +347,35 @@ export default function Home() {
                          focus:ring-2 focus:ring-blue-500 focus:border-transparent 
                          bg-white dark:bg-gray-800 text-black dark:text-zinc-50"
               />
-              <button
-                onClick={pasteFromClipboard}
-                className="w-10 h-10 flex items-center justify-center 
-                         bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600
-                         rounded-lg border border-gray-300 dark:border-gray-600
-                         transition-colors active:scale-95"
-                title="클립보드에서 붙여넣기"
-                aria-label="클립보드에서 붙여넣기"
-              >
-                <span className="text-base">📋</span>
-              </button>
+              {!isMobileDevice && (
+                <button
+                  onClick={pasteFromClipboard}
+                  className="w-10 h-10 flex items-center justify-center 
+                           bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600
+                           rounded-lg border border-gray-300 dark:border-gray-600
+                           transition-colors active:scale-95"
+                  title="클립보드에서 붙여넣기"
+                  aria-label="클립보드에서 붙여넣기"
+                >
+                  <span className="text-base">📋</span>
+                </button>
+              )}
             </div>
           </div>
+          
+          {isMobileDevice && (
+            <button
+              onClick={pasteFromClipboard}
+              className="fixed top-2 right-2 w-10 h-10 flex items-center justify-center 
+                       bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600
+                       rounded-lg border border-gray-300 dark:border-gray-600
+                       transition-colors active:scale-95 z-50 shadow-lg"
+              title="클립보드에서 붙여넣기"
+              aria-label="클립보드에서 붙여넣기"
+            >
+              <span className="text-base">📋</span>
+            </button>
+          )}
 
           {extractedWord && (() => {
             const result = wordResults.get(extractedWord);
