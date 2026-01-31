@@ -360,14 +360,14 @@ export default function Home() {
           {isMobileDevice && (
             <button
               onClick={pasteFromClipboard}
-              className="fixed top-2 right-2 w-10 h-10 flex items-center justify-center 
+              className="fixed top-2 right-2 w-[60px] h-[60px] flex items-center justify-center 
                        bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600
                        rounded-lg border border-gray-300 dark:border-gray-600
                        transition-colors active:scale-95 z-50 shadow-lg"
               title="클립보드에서 붙여넣기"
               aria-label="클립보드에서 붙여넣기"
             >
-              <span className="text-base">📋</span>
+              <span className="text-2xl">📋</span>
             </button>
           )}
 
