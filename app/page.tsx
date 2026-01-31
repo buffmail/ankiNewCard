@@ -19,7 +19,6 @@ export default function Home() {
   const [clickedAnkiWord, setClickedAnkiWord] = useState<string | null>(null);
   const [isMobileDevice, setIsMobileDevice] = useState(false);
   const ankiButtonRef = useRef<HTMLAnchorElement | null>(null);
-  const shouldScrollToAnki = useRef(false);
   const autoTriggeredWords = useRef<Set<string>>(new Set());
   
   useEffect(() => {
@@ -236,26 +235,12 @@ export default function Home() {
       const firstLine = text.split('\n')[0].trim();
       const processedText = firstLine.replace(/^Learn/i, '').trim();
       setInputText(processedText);
-      shouldScrollToAnki.current = true;
     } catch (error) {
       console.error('Clipboard read failed:', error);
       alert('클립보드 읽기 권한이 필요합니다.');
     }
   };
 
-  useEffect(() => {
-    if (shouldScrollToAnki.current && ankiButtonRef.current && wordResults.size > 0) {
-      // Wait for DOM update before scrolling
-      setTimeout(() => {
-        ankiButtonRef.current?.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center',
-          inline: 'nearest'
-        });
-        shouldScrollToAnki.current = false;
-      }, 300);
-    }
-  }, [wordResults]);
 
   useEffect(() => {
     if (extractedWord) {
