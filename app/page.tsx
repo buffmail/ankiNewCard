@@ -11,6 +11,7 @@ interface WordResult {
 export default function Home() {
   const [inputText, setInputText] = useState("");
   const [extractedWord, setExtractedWord] = useState<string | null>(null);
+  const [displayedWord, setDisplayedWord] = useState<string | null>(null);
   const [loadingWords, setLoadingWords] = useState<Set<string>>(new Set());
   const [wordResults, setWordResults] = useState<Map<string, WordResult>>(new Map());
   const [showSettings, setShowSettings] = useState(false);
@@ -59,9 +60,17 @@ export default function Home() {
       setExtractedWord(word);
     } else {
       setExtractedWord(null);
+      setDisplayedWord(null);
       setClickedAnkiWord(null);
     }
   }, [inputText]);
+
+  // Update displayedWord when a result becomes available for extractedWord
+  useEffect(() => {
+    if (extractedWord && wordResults.has(extractedWord)) {
+      setDisplayedWord(extractedWord);
+    }
+  }, [extractedWord, wordResults]);
 
   // Reset Anki button state when extracted word changes
   useEffect(() => {
@@ -377,9 +386,10 @@ export default function Home() {
             </button>
           )}
 
-          {extractedWord && (() => {
-            const result = wordResults.get(extractedWord);
-            const isLoading = loadingWords.has(extractedWord);
+          {(displayedWord || (extractedWord && loadingWords.has(extractedWord))) && (() => {
+            const wordToDisplay = displayedWord || extractedWord;
+            const result = wordToDisplay ? wordResults.get(wordToDisplay) : null;
+            const isLoading = extractedWord && loadingWords.has(extractedWord) && extractedWord !== displayedWord;
             
             return (
               <div className="mb-6">
@@ -406,12 +416,12 @@ export default function Home() {
                         {isMobileDevice && (
                           <a
                             ref={ankiButtonRef}
-                            href={getIntentUrl(extractedWord, result)}
-                            onClick={() => setClickedAnkiWord(extractedWord)}
+                            href={getIntentUrl(wordToDisplay!, result)}
+                            onClick={() => setClickedAnkiWord(wordToDisplay!)}
                             className={`absolute top-12 right-2 w-8 h-8 flex items-center justify-center 
                                       rounded border border-gray-300 dark:border-gray-600
                                       transition-colors active:scale-95 ${
-                                        clickedAnkiWord === extractedWord
+                                        clickedAnkiWord === wordToDisplay
                                           ? 'bg-gray-300 dark:bg-gray-600 opacity-50 cursor-not-allowed'
                                           : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
                                       }`}
@@ -421,7 +431,7 @@ export default function Home() {
                             <img 
                               src="/anki-icon.png" 
                               alt="Anki" 
-                              className={`w-5 h-5 ${clickedAnkiWord === extractedWord ? 'opacity-50' : ''}`}
+                              className={`w-5 h-5 ${clickedAnkiWord === wordToDisplay ? 'opacity-50' : ''}`}
                             />
                           </a>
                         )}
