@@ -375,6 +375,7 @@ export default function Home() {
             const wordToDisplay = displayedWord || extractedWord;
             const result = wordToDisplay ? wordResults.get(wordToDisplay) : null;
             const isLoading = extractedWord && loadingWords.has(extractedWord) && extractedWord !== displayedWord;
+            const shouldDim = isLoading && displayedWord && displayedWord !== extractedWord;
             
             return (
               <div className="mb-6">
@@ -384,7 +385,9 @@ export default function Home() {
                   </div>
                 )}
                 {result && (
-                  <div className="w-full p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 relative">
+                  <div className={`w-full p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 relative transition-opacity duration-300 ${
+                    shouldDim ? 'opacity-50' : 'opacity-100'
+                  }`}>
                     {result.meanings && result.meanings.length > 0 && (
                       <>
                         <button
