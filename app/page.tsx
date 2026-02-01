@@ -20,6 +20,7 @@ export default function Home() {
   const [isMobileDevice, setIsMobileDevice] = useState(false);
   const ankiButtonRef = useRef<HTMLAnchorElement | null>(null);
   const autoTriggeredWords = useRef<Set<string>>(new Set());
+  const isPastedInput = useRef<boolean>(false);
   
   useEffect(() => {
     const savedKey = localStorage.getItem('gemini_api_key') || '';
@@ -234,6 +235,7 @@ export default function Home() {
       const text = await navigator.clipboard.readText();
       const firstLine = text.split('\n')[0].trim();
       const processedText = firstLine.replace(/^Learn/i, '').trim();
+      isPastedInput.current = true;
       setInputText(processedText);
     } catch (error) {
       console.error('Clipboard read failed:', error);
@@ -253,9 +255,9 @@ export default function Home() {
     }
   }, [extractedWord, fetchWordMeaning, loadingWords, wordResults, apiKey]);
 
-  // Auto-trigger Anki intent on Android mobile when result is available
+  // Auto-trigger Anki intent on Android mobile when result is available (only for pasted input)
   useEffect(() => {
-    if (extractedWord && isAndroidMobile()) {
+    if (extractedWord && isAndroidMobile() && isPastedInput.current) {
       const result = wordResults.get(extractedWord);
       if (result && result.meanings && result.meanings.length > 0 && !autoTriggeredWords.current.has(extractedWord)) {
         // Mark as triggered to prevent duplicate calls
@@ -335,7 +337,10 @@ export default function Home() {
                 type="text"
                 id="word-input"
                 value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
+                onChange={(e) => {
+                  isPastedInput.current = false;
+                  setInputText(e.target.value);
+                }}
                 placeholder="텍스트를 붙여넣거나 입력하세요"
                 className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
                          focus:ring-2 focus:ring-blue-500 focus:border-transparent 
