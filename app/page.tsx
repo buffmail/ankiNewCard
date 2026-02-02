@@ -5,6 +5,7 @@ import { BUILD_TIME } from "./build-time";
 
 interface WordResult {
   word: string;
+  pronunciation?: string;
   meanings: Array<{ meaning: string; example: string }>;
 }
 
@@ -110,6 +111,7 @@ export default function Home() {
 
       const finalResult: WordResult = {
         word,
+        pronunciation: result.pronunciation,
         meanings: result.meanings.map(meaning => ({
           meaning: meaning.meaning,
           example: ` - ${meaning.example}`
@@ -136,7 +138,7 @@ export default function Home() {
 
   const formatBackContent = (result: WordResult): string => {
     const backParts: string[] = [];
-    
+
     if (result.meanings && result.meanings.length > 0) {
       result.meanings.forEach((item, idx) => {
         backParts.push(item.meaning);
@@ -148,7 +150,12 @@ export default function Home() {
         }
       });
     }
-    
+
+    if (result.pronunciation) {
+      backParts.push('');
+      backParts.push(`<span style="color: #666; font-size: small;">${result.pronunciation}</span>`);
+    }
+
     return backParts.join('<br>');
   };
 
@@ -423,10 +430,15 @@ export default function Home() {
                             />
                           </a>
                         )}
-                        <div 
+                        <div
                           className="space-y-3 pr-10"
                           {...createLongPressHandler(result)}
                         >
+                          {result.pronunciation && (
+                            <p className="text-sm text-gray-500 dark:text-gray-400 -mb-1">
+                              {result.pronunciation}
+                            </p>
+                          )}
                           {result.meanings.map((item, idx) => (
                             <div key={idx}>
                               <p className="font-semibold text-gray-800 dark:text-gray-200 mb-1">

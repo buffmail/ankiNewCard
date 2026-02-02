@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Gemini API 호출 - 영어로만 응답, Anki 카드용 간결한 형식
-    const prompt = `Provide most important definitions for the English word "${word}" (1 is preferred, but use up to 3 only if the word has multiple distinct meanings), with one concise example sentence for each definition. Keep definitions and examples brief and suitable for Anki flashcards. Everything should be in English only. JSON format:
-{"word": "${word}", "meanings": [{"meaning": "brief definition", "example": "concise example"}]}`;
+    const prompt = `Provide most important definitions for the English word "${word}" (1 is preferred, but use up to 3 only if the word has multiple distinct meanings), with one concise example sentence for each definition. Also include the pronunciation in IPA format. Keep definitions and examples brief and suitable for Anki flashcards. Everything should be in English only. JSON format:
+{"word": "${word}", "pronunciation": "/ɪɡˈzæmpəl/", "meanings": [{"meaning": "brief definition", "example": "concise example"}]}`;
 
     // Gemini 2.5 Flash-Lite API 엔드포인트 (더 빠른 모델)
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
