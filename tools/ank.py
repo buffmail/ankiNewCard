@@ -160,11 +160,12 @@ def study():
             print(html_to_ansi(card.note()["Back"]))
 
             print()
-            selected = 1  # 0=Again, 1=Good
+            selected = 1  # 0=Again, 1=Good, 2=Add
             again_ivl = col.sched.nextIvlStr(card, 1).replace("<", "")
             good_ivl = col.sched.nextIvlStr(card, 3).replace("<", "")
-            options = [(f"Again ({again_ivl})", 1), (f"Good ({good_ivl})", 3)]
+            options = [(f"Again ({again_ivl})", 1), (f"Good ({good_ivl})", 3), ("Add", None)]
             print("\033[?25l", end="")  # hide cursor
+            add_requested = False
             while True:
                 display = "  ".join(
                     f"\033[44;97m {opt[0]} \033[0m" if i == selected else f" {opt[0]} "
@@ -183,10 +184,23 @@ def study():
                 elif key in ("\r", "\n"):
                     print("\033[?25h", end="")  # show cursor
                     print()
-                    col.sched.answerCard(card, options[selected][1])
+                    if options[selected][1] is None:
+                        add_requested = True
+                    else:
+                        col.sched.answerCard(card, options[selected][1])
                     break
             if quit_requested:
                 break
+            if add_requested:
+                col.close()
+                try:
+                    new_word = input("Word to add: ").strip()
+                except (KeyboardInterrupt, EOFError):
+                    new_word = ""
+                if new_word:
+                    add(new_word, sync=False)
+                col = Collection(COLLECTION_PATH)
+                continue
     finally:
         col.close()
         sync_after_study()
@@ -269,7 +283,7 @@ def build_meaning_html(meanings, pronunciation):
     return "".join(parts)
 
 
-def add(word):
+def add(word, sync=True):
     data = fetch_suggestion(word)
     meanings = _normalize_meanings(data.get("meanings"))
     pronunciation = data.get("pronunciation") or ""
@@ -287,7 +301,8 @@ def add(word):
     meaning_html = build_meaning_html(meanings, pronunciation)
     try:
         subprocess.run(["apy", "add-single", word, meaning_html], check=True)
-        subprocess.run(["apy", "sync"], check=True)
+        if sync:
+            subprocess.run(["apy", "sync"], check=True)
     except FileNotFoundError:
         print("Error: 'apy' command not found. Install it or add to PATH.")
         sys.exit(1)
