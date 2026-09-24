@@ -41,7 +41,11 @@ export default function Home() {
   const extractWord = (text: string): string | null => {
     const firstLine = text.split('\n')[0].trim();
     if (!firstLine) return null;
-    
+
+    // Shared text like "Learn Cupboard https://..." → "cupboard"
+    const learnMatch = firstLine.match(/^learn\s+(.+?)\s+https?:\/\/\S*$/i);
+    if (learnMatch) return learnMatch[1].trim().toLowerCase();
+
     const wordRegex = /\b[a-zA-Z]+\b/g;
     const words = firstLine.match(wordRegex) || [];
     if (words.length === 0 || !words[0]) return null;
