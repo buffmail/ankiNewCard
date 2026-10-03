@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import select
 import subprocess
 import sys
 import termios
@@ -11,6 +12,7 @@ import urllib.request
 COLLECTION_PATH = os.environ.get("ANKI_COLLECTION_PATH")
 GEMINI_API_KEY = os.environ.get("ANKI_GEMINI_API_KEY")
 API_URL = "https://anki-new-card.vercel.app/api/gemini"
+NOTE_MODEL = "Basic"  # model apy adds with, and so the one dupes are checked against
 
 BOLD = "\033[1m"
 DIM = "\033[2m"
@@ -25,16 +27,73 @@ def clear():
 
 
 def get_key():
+    """Read one keypress or mouse event.
+
+    Returns a raw key string (e.g. "q", "\r", "\x1b[C") or, for an SGR mouse
+    event, a tuple ("mouse", button, col, row, is_press).
+    """
     fd = sys.stdin.fileno()
     old = termios.tcgetattr(fd)
     try:
         tty.setraw(fd)
         ch = sys.stdin.read(1)
-        if ch == "\x1b":
-            ch += sys.stdin.read(2)
-        return ch
+        if ch != "\x1b":
+            return ch
+        if sys.stdin.read(1) != "[":
+            return ch
+        ch3 = sys.stdin.read(1)
+        if ch3 != "<":  # arrow keys etc: "\x1b[C", "\x1b[D"
+            return "\x1b[" + ch3
+        # SGR mouse report: "\x1b[<button;col;row" terminated by 'M' (press) or 'm' (release)
+        seq = ""
+        while True:
+            c = sys.stdin.read(1)
+            if c in ("M", "m"):
+                break
+            seq += c
+        try:
+            button, col, row = (int(p) for p in seq.split(";"))
+        except (ValueError, TypeError):
+            return ""
+        return ("mouse", button, col, row, c == "M")
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
+
+def get_cursor_pos():
+    """Return the terminal cursor position as (row, col), 1-based, or (None, None)."""
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        sys.stdout.write("\033[6n")
+        sys.stdout.flush()
+        buf = ""
+        while True:
+            if not select.select([fd], [], [], 0.2)[0]:
+                return None, None
+            ch = os.read(fd, 1).decode(errors="ignore")
+            buf += ch
+            if ch == "R":
+                break
+        body = buf[buf.rfind("\033[") + 2 : -1]  # strip leading ESC[ and trailing R
+        row, col = (int(p) for p in body.split(";"))
+        return row, col
+    except (ValueError, OSError):
+        return None, None
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
+
+def button_spans(options):
+    """Column ranges (start, end), 1-based inclusive, for each rendered button."""
+    spans = []
+    col = 1
+    for label, _ in options:
+        width = len(label) + 2  # one padding space on each side
+        spans.append((col, col + width - 1))
+        col += width + 2  # skip the two-space separator between buttons
+    return spans
 
 
 def strip_html(text):
@@ -90,8 +149,8 @@ def require_collection_path():
         sys.exit(1)
 
 
-def sync_after_study():
-    """Sync collection after any study session exit."""
+def sync_collection():
+    """Synchronize the collection with AnkiWeb."""
     try:
         subprocess.run(["apy", "sync"], check=True)
     except FileNotFoundError:
@@ -135,9 +194,7 @@ def study():
             front = strip_html(card.note()["Front"]).replace("\n", " ")
             max_len = 38 - len(str(total_due)) - 3
             front_display = front[:max_len] if len(front) > max_len else front
-            print("╔══════════════════════════════════════╗")
-            print(f"║{front_display:^{38-len(str(total_due))-2}}({total_due})║")
-            print("╚══════════════════════════════════════╝")
+            print_card_header(front_display, total_due)
             print("\n(Press Enter to show answer, q to quit)")
 
             try:
@@ -153,18 +210,25 @@ def study():
                 break
 
             clear()
-            print("╔══════════════════════════════════════╗")
-            print(f"║{front_display:^{38-len(str(total_due))-2}}({total_due})║")
-            print("╚══════════════════════════════════════╝")
+            print_card_header(front_display, total_due)
             print()
-            print(html_to_ansi(card.note()["Back"]))
+            back = card.note()["Back"]
+            meanings, pronunciation = parse_meaning_html(back)
+            if meanings:
+                render_entry(meanings, pronunciation)
+            else:
+                print(html_to_ansi(back))
 
             print()
             selected = 1  # 0=Again, 1=Good, 2=Add
             again_ivl = col.sched.nextIvlStr(card, 1).replace("<", "")
             good_ivl = col.sched.nextIvlStr(card, 3).replace("<", "")
             options = [(f"Again ({again_ivl})", 1), (f"Good ({good_ivl})", 3), ("Add", None)]
+            spans = button_spans(options)
+            button_row, _ = get_cursor_pos()  # row the buttons are drawn on
             print("\033[?25l", end="")  # hide cursor
+            sys.stdout.write("\033[?1000h\033[?1006h")  # enable SGR mouse tracking
+            sys.stdout.flush()
             add_requested = False
             while True:
                 display = "  ".join(
@@ -173,22 +237,35 @@ def study():
                 )
                 print(f"\r{display}", end="", flush=True)
                 key = get_key()
-                if key == "q":
-                    print("\033[?25h")  # show cursor
+
+                activate = False
+                if isinstance(key, tuple) and key[0] == "mouse":
+                    _, button, mx, my, press = key
+                    if press and button == 0 and button_row and my == button_row:
+                        for i, (start, end) in enumerate(spans):
+                            if start <= mx <= end:
+                                selected = i
+                                activate = True
+                                break
+                elif key == "q":
                     quit_requested = True
                     break
-                if key == "\x1b[D":  # left arrow
+                elif key == "\x1b[D":  # left arrow
                     selected = max(0, selected - 1)
                 elif key == "\x1b[C":  # right arrow
                     selected = min(len(options) - 1, selected + 1)
                 elif key in ("\r", "\n"):
-                    print("\033[?25h", end="")  # show cursor
-                    print()
+                    activate = True
+
+                if activate:
                     if options[selected][1] is None:
                         add_requested = True
                     else:
                         col.sched.answerCard(card, options[selected][1])
                     break
+
+            sys.stdout.write("\033[?1000l\033[?1006l")  # disable mouse tracking
+            print("\033[?25h")  # show cursor
             if quit_requested:
                 break
             if add_requested:
@@ -202,8 +279,10 @@ def study():
                 col = Collection(COLLECTION_PATH)
                 continue
     finally:
+        sys.stdout.write("\033[?1000l\033[?1006l\033[?25h")  # restore mouse + cursor
+        sys.stdout.flush()
         col.close()
-        sync_after_study()
+        sync_collection()
 
 
 def _normalize_meanings(raw_meanings):
@@ -247,12 +326,20 @@ def fetch_suggestion(word):
     return data
 
 
-def display_suggestion(word, data):
-    pronunciation = data.get("pronunciation") or ""
-    meanings = _normalize_meanings(data.get("meanings"))
+def print_card_header(front, total_due):
+    """Draw the boxed front, with the word coloured the way --add colours it."""
+    width = 38 - len(str(total_due)) - 2
+    pad = max(0, width - len(front))
+    left, right = pad // 2, pad - pad // 2
+    print("╔══════════════════════════════════════╗")
+    print(f"║{' ' * left}{BOLD}{CYAN}{front}{RESET}{' ' * right}({total_due})║")
+    print("╚══════════════════════════════════════╝")
 
-    print()
-    print(f"{BOLD}{CYAN}{word}{RESET}")
+
+def render_entry(meanings, pronunciation, word=None):
+    """Print meanings the way --add does: a numbered list with dimmed examples."""
+    if word:
+        print(f"{BOLD}{CYAN}{word}{RESET}")
     if pronunciation:
         print(f"{DIM}{pronunciation}{RESET}")
     print(f"{DIM}────────────────────────────────{RESET}")
@@ -263,6 +350,56 @@ def display_suggestion(word, data):
         if example:
             print(f"   {DIM}{ITALIC}\"{example}\"{RESET}")
         print()
+
+
+def display_suggestion(word, data):
+    print()
+    render_entry(
+        _normalize_meanings(data.get("meanings")),
+        data.get("pronunciation") or "",
+        word=word,
+    )
+
+
+def parse_meaning_html(html):
+    """Recover (meanings, pronunciation) from a Back field built by build_meaning_html.
+
+    Returns ([], "") for anything that does not look like one of our fields, so
+    the caller can fall back to printing the raw HTML.
+    """
+    import re
+
+    body = html or ""
+    pronunciation = ""
+    match = re.search(
+        r"(?:<br\s*/?>\s*)*<span[^>]*color:[^>]*>(.*?)</span>\s*$",
+        body,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if match:
+        pronunciation = strip_html(match.group(1))
+        body = body[: match.start()]
+
+    meanings = []
+    saw_example = False
+    for block in re.split(r"<br\s*/?>\s*<br\s*/?>", body, flags=re.IGNORECASE):
+        if not strip_html(block):
+            continue
+        # build_meaning_html hangs the example off the meaning as a small italic span
+        parts = re.split(
+            r"<br\s*/?>\s*(?=<span[^>]*small|<i>)", block, maxsplit=1, flags=re.IGNORECASE
+        )
+        example = ""
+        if len(parts) > 1:
+            saw_example = True
+            example = re.sub(r"^[-\u2013\u2014]\s*", "", strip_html(parts[1]))
+        meanings.append({"meaning": strip_html(parts[0]), "example": example})
+
+    # Without a pronunciation line or a single small-italic example, this is a
+    # hand-written card rather than one of ours: let the raw renderer have it.
+    if not meanings or not (saw_example or pronunciation):
+        return [], ""
+    return meanings, pronunciation
 
 
 def build_meaning_html(meanings, pronunciation):
@@ -283,14 +420,71 @@ def build_meaning_html(meanings, pronunciation):
     return "".join(parts)
 
 
+def open_collection():
+    """Open the collection for a direct edit, or exit with a message."""
+    require_collection_path()
+    try:
+        from anki.collection import Collection
+    except ImportError:
+        print(
+            "Error: Anki module not found. Run with: uv run --with anki python anki.py --add WORD"
+        )
+        sys.exit(1)
+
+    try:
+        return Collection(COLLECTION_PATH)
+    except Exception as e:  # pylint: disable=broad-except
+        print("Error: Could not open database. Is Anki Desktop open?")
+        print(f"Details: {e}")
+        sys.exit(1)
+
+
+def find_duplicates(word):
+    """Return ids of the notes whose Front already holds word, oldest first.
+
+    Matches on the Front field itself rather than Anki's dupe: search: that one
+    keys on a checksum of the raw field, so it treats "Artefact" and "artefact"
+    as different words and would add a second note instead of updating.
+    """
+    col = open_collection()
+    try:
+        from anki.collection import SearchNode
+
+        query = col.build_search_string(
+            SearchNode(note=NOTE_MODEL),
+            SearchNode(field=SearchNode.Field(field_name="Front", text=word)),
+        )
+        return sorted(col.find_notes(query))
+    finally:
+        col.close()
+
+
+def update_notes_back(note_ids, meaning_html):
+    """Overwrite the Back field of existing notes, leaving their scheduling alone."""
+    col = open_collection()
+    try:
+        for note_id in note_ids:
+            note = col.get_note(note_id)
+            note["Back"] = meaning_html
+            col.update_note(note)
+    finally:
+        col.close()
+
+
 def add(word, sync=True):
     data = fetch_suggestion(word)
     meanings = _normalize_meanings(data.get("meanings"))
     pronunciation = data.get("pronunciation") or ""
 
     display_suggestion(word, data)
+    note_ids = find_duplicates(word)
+    if note_ids:
+        copies = f" in {len(note_ids)} cards" if len(note_ids) > 1 else ""
+        question = f"{YELLOW}Already in Anki{copies}.{RESET} Update? [Y/n] "
+    else:
+        question = "Add to Anki? [Y/n] "
     try:
-        reply = input("Add to Anki? [Y/n] ").strip().lower()
+        reply = input(question).strip().lower()
     except (KeyboardInterrupt, EOFError):
         print("\nSkipped.")
         return
@@ -299,6 +493,13 @@ def add(word, sync=True):
         return
 
     meaning_html = build_meaning_html(meanings, pronunciation)
+    if note_ids:
+        update_notes_back(note_ids, meaning_html)
+        print(f"Updated: {word}")
+        if sync:
+            sync_collection()
+        return
+
     try:
         subprocess.run(["apy", "add-single", word, meaning_html], check=True)
         if sync:
@@ -311,11 +512,57 @@ def add(word, sync=True):
         sys.exit(1)
 
 
+def set_limit(num):
+    require_collection_path()
+    try:
+        from anki.collection import Collection
+    except ImportError:
+        print(
+            "Error: Anki module not found. Run with: uv run --with anki python anki.py --limit N"
+        )
+        sys.exit(1)
+
+    try:
+        col = Collection(COLLECTION_PATH)
+    except Exception as e:  # pylint: disable=broad-except
+        print("Error: Could not open database. Is Anki Desktop open?")
+        print(f"Details: {e}")
+        return
+
+    try:
+        for conf in col.decks.all_config():
+            old = conf["rev"]["perDay"]
+            conf["rev"]["perDay"] = num
+            col.decks.update_config(conf)
+            print(f"{conf['name']}: reviews/day {old} -> {num}")
+    finally:
+        col.close()
+
+    try:
+        subprocess.run(["apy", "sync"], check=True)
+    except FileNotFoundError:
+        print("Error: 'apy' command not found. Install it or add to PATH.")
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: 'apy sync' failed (exit {e.returncode}).")
+        sys.exit(1)
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Anki study helper.")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--study", action="store_true", help="Review due cards (default).")
-    group.add_argument("--add", metavar="WORD", help="Generate and add a new card for WORD.")
+    group.add_argument(
+        "--add",
+        metavar="WORD",
+        help="Add a card for WORD, updating the existing one if it is already there.",
+    )
+    group.add_argument(
+        "--limit", metavar="NUM", type=int, help="Set the daily reviews/day limit."
+    )
+    group.add_argument(
+        "--sync", action="store_true", help="Sync the collection with AnkiWeb only."
+    )
     return parser.parse_args()
 
 
@@ -327,6 +574,13 @@ def main():
             print("Error: Please provide a non-empty word for --add")
             sys.exit(1)
         add(word)
+    elif args.limit is not None:
+        if args.limit < 0:
+            print("Error: --limit must be a non-negative integer")
+            sys.exit(1)
+        set_limit(args.limit)
+    elif args.sync:
+        sync_collection()
     else:
         study()
 
