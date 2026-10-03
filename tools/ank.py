@@ -459,12 +459,13 @@ def find_duplicates(word):
         col.close()
 
 
-def update_notes_back(note_ids, meaning_html):
-    """Overwrite the Back field of existing notes, leaving their scheduling alone."""
+def update_notes(note_ids, word, meaning_html):
+    """Overwrite Front and Back of existing notes, leaving their scheduling alone."""
     col = open_collection()
     try:
         for note_id in note_ids:
             note = col.get_note(note_id)
+            note["Front"] = word
             note["Back"] = meaning_html
             col.update_note(note)
     finally:
@@ -472,6 +473,8 @@ def update_notes_back(note_ids, meaning_html):
 
 
 def add(word, sync=True):
+    # Cards are stored lowercase; find_duplicates already matches case-insensitively.
+    word = word.lower()
     data = fetch_suggestion(word)
     meanings = _normalize_meanings(data.get("meanings"))
     pronunciation = data.get("pronunciation") or ""
@@ -494,7 +497,7 @@ def add(word, sync=True):
 
     meaning_html = build_meaning_html(meanings, pronunciation)
     if note_ids:
-        update_notes_back(note_ids, meaning_html)
+        update_notes(note_ids, word, meaning_html)
         print(f"Updated: {word}")
         if sync:
             sync_collection()
