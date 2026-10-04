@@ -220,7 +220,8 @@ export default function Home() {
 
   const getIntentUrl = (word: string, result: WordResult): string => {
     const back = formatBackContent(result);
-    const encodedSubject = encodeURIComponent(word);
+    // Anki cards are stored lowercase regardless of how the word was typed.
+    const encodedSubject = encodeURIComponent(word.toLowerCase());
     const encodedText = encodeURIComponent(back);
     
     const intent = `intent:#Intent;` +
@@ -347,6 +348,7 @@ export default function Home() {
               <input
                 type="text"
                 id="word-input"
+                autoCapitalize="none"
                 value={inputText}
                 onChange={(e) => {
                   isPastedInput.current = false;
