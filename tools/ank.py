@@ -424,7 +424,7 @@ def build_meaning_html(meanings, pronunciation):
         example = meaning.get("example")
         part = text
         if example:
-            part = '<span class="anki-example" style="color: #268bd2; font-weight: bold;">' + example + "</span><br>" + text
+            part = '<span class="anki-example" style="color: #268bd2; font-weight: bold; font-size: 1.125em;">' + example + "</span><br>" + text
         if idx != len(meanings) - 1:
             part += "<br><br>"
         parts.append(part)

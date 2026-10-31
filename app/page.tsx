@@ -149,7 +149,7 @@ export default function Home() {
     if (result.meanings && result.meanings.length > 0) {
       result.meanings.forEach((item, idx) => {
         if (item.example) {
-          backParts.push(`<span class="anki-example" style="color: #268bd2; font-weight: bold;">${item.example}</span>`);
+          backParts.push(`<span class="anki-example" style="color: #268bd2; font-weight: bold; font-size: 1.125em;">${item.example}</span>`);
         }
         backParts.push(item.meaning);
         if (idx < result.meanings.length - 1) {
@@ -456,7 +456,7 @@ export default function Home() {
                           {result.meanings.map((item, idx) => (
                             <div key={idx}>
                               {item.example && (
-                                <p className="font-bold text-blue-600 dark:text-blue-400 mb-1">
+                                <p className="text-lg font-bold text-blue-600 dark:text-blue-400 mb-1">
                                   {item.example}
                                 </p>
                               )}
