@@ -307,6 +307,7 @@ def fetch_suggestion(word):
     request = urllib.request.Request(
         API_URL, data=payload, headers={"Content-Type": "application/json"}, method="POST"
     )
+    print(f"Looking up {word}...", flush=True)
     try:
         with urllib.request.urlopen(request, timeout=15) as resp:
             body = resp.read().decode("utf-8")
@@ -314,6 +315,9 @@ def fetch_suggestion(word):
     except urllib.error.HTTPError as e:
         detail = e.read().decode("utf-8", errors="ignore")
         print(f"Error: API request failed ({e.code}). {detail}")
+        sys.exit(1)
+    except TimeoutError:
+        print("Error: Word lookup timed out after 15 seconds. Please try again.")
         sys.exit(1)
     except urllib.error.URLError as e:
         print(f"Error: Could not reach API: {e.reason}")

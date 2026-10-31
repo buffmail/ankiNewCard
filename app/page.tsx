@@ -88,8 +88,6 @@ export default function Home() {
       return;
     }
 
-    setLoadingWords(prev => new Set(prev).add(word));
-
     if (!apiKey) {
       setWordResults(prev => new Map(prev).set(word, {
         word,
@@ -98,6 +96,8 @@ export default function Home() {
       return;
     }
 
+    setLoadingWords(prev => new Set(prev).add(word));
+
     try {
       const response = await fetch('/api/gemini', {
         method: 'POST',
@@ -105,6 +105,7 @@ export default function Home() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ word, apiKey }),
+        signal: AbortSignal.timeout(15_000),
       });
 
       if (!response.ok) {
@@ -118,14 +119,16 @@ export default function Home() {
         pronunciation: result.pronunciation,
         meanings: result.meanings.map(meaning => ({
           meaning: meaning.meaning,
-          example: ` - ${meaning.example}`
+          example: meaning.example || ''
         }))
       }
 
       setWordResults(prev => new Map(prev).set(word, finalResult));
     } catch (error) {
       console.error('Error fetching word meaning:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch definition.';
+      const errorMessage = error instanceof Error && error.name === 'TimeoutError'
+        ? 'Word lookup timed out after 15 seconds. Please try again.'
+        : error instanceof Error ? error.message : 'Failed to fetch definition.';
       // Store error message in results for display
       setWordResults(prev => new Map(prev).set(word, {
         word,
@@ -145,10 +148,10 @@ export default function Home() {
 
     if (result.meanings && result.meanings.length > 0) {
       result.meanings.forEach((item, idx) => {
-        backParts.push(item.meaning);
         if (item.example) {
-          backParts.push(`<span style="font-size: small;"><i>${item.example}</i></span>`);
+          backParts.push(`<span class="anki-example" style="color: #268bd2; font-weight: bold;">${item.example}</span>`);
         }
+        backParts.push(item.meaning);
         if (idx < result.meanings.length - 1) {
           backParts.push('');
         }
@@ -397,6 +400,11 @@ export default function Home() {
             
             return (
               <div className="mb-6">
+                {isLoading && (
+                  <p role="status" className="mb-3 text-gray-600 dark:text-gray-400">
+                    Looking up {extractedWord}...
+                  </p>
+                )}
                 {result && (
                   <div className={`w-full p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 relative transition-opacity duration-300 ${
                     shouldDim ? 'opacity-50' : 'opacity-100'
@@ -447,11 +455,13 @@ export default function Home() {
                           )}
                           {result.meanings.map((item, idx) => (
                             <div key={idx}>
-                              <p className="font-semibold text-gray-800 dark:text-gray-200 mb-1">
+                              {item.example && (
+                                <p className="font-bold text-blue-600 dark:text-blue-400 mb-1">
+                                  {item.example}
+                                </p>
+                              )}
+                              <p className="text-gray-800 dark:text-gray-200">
                                 {item.meaning}
-                              </p>
-                              <p className="text-sm text-gray-600 dark:text-gray-400 italic">
-                                {item.example}
                               </p>
                             </div>
                           ))}
