@@ -337,7 +337,7 @@ def print_card_header(front, total_due):
 
 
 def render_entry(meanings, pronunciation, word=None):
-    """Print meanings the way --add does: a numbered list with dimmed examples."""
+    """Print meanings the way --add does: a numbered list with highlighted examples."""
     if word:
         print(f"{BOLD}{CYAN}{word}{RESET}")
     if pronunciation:
@@ -346,9 +346,11 @@ def render_entry(meanings, pronunciation, word=None):
     for idx, meaning in enumerate(meanings):
         meaning_text = meaning.get("meaning", "")
         example = meaning.get("example") or ""
-        print(f"{BOLD}{idx + 1}.{RESET} {meaning_text}")
         if example:
-            print(f"   {DIM}{ITALIC}\"{example}\"{RESET}")
+            print(f"{BOLD}{idx + 1}.{RESET} {BOLD}{CYAN}\"{example}\"{RESET}")
+            print(f"   {meaning_text}")
+        else:
+            print(f"{BOLD}{idx + 1}.{RESET} {meaning_text}")
         print()
 
 
@@ -372,7 +374,7 @@ def parse_meaning_html(html):
     body = html or ""
     pronunciation = ""
     match = re.search(
-        r"(?:<br\s*/?>\s*)*<span[^>]*color:[^>]*>(.*?)</span>\s*$",
+        r"(?:<br\s*/?>\s*)*<span[^>]*color:[^>]*>([^<]*)</span>\s*$",
         body,
         flags=re.IGNORECASE | re.DOTALL,
     )
@@ -385,7 +387,16 @@ def parse_meaning_html(html):
     for block in re.split(r"<br\s*/?>\s*<br\s*/?>", body, flags=re.IGNORECASE):
         if not strip_html(block):
             continue
-        # build_meaning_html hangs the example off the meaning as a small italic span
+        # New cards highlight the example first; accept older cards too.
+        leading_example = re.match(
+            r'^\s*<span[^>]*(?:small|anki-example)[^>]*>(.*?)</span>\s*<br\s*/?>(.*)$',
+            block, flags=re.IGNORECASE | re.DOTALL,
+        )
+        if leading_example:
+            saw_example = True
+            example = re.sub(r"^[-\u2013\u2014]\s*", "", strip_html(leading_example.group(1)))
+            meanings.append({"meaning": strip_html(leading_example.group(2)), "example": example})
+            continue
         parts = re.split(
             r"<br\s*/?>\s*(?=<span[^>]*small|<i>)", block, maxsplit=1, flags=re.IGNORECASE
         )
@@ -409,7 +420,7 @@ def build_meaning_html(meanings, pronunciation):
         example = meaning.get("example")
         part = text
         if example:
-            part += '<br><span style="font-size: small;"><i> - ' + example + "</i></span>"
+            part = '<span class="anki-example" style="color: #268bd2; font-weight: bold;">' + example + "</span><br>" + text
         if idx != len(meanings) - 1:
             part += "<br><br>"
         parts.append(part)
